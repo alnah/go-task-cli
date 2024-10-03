@@ -12,17 +12,6 @@ import (
 	s "github.com/alnah/task-tracker/internal/storage"
 )
 
-var fixedTime = time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC)
-var sampleTasks = r.Tasks{
-	1: {
-		ID:          1,
-		Description: "description",
-		Status:      r.StatusTodo,
-		CreatedAt:   fixedTime,
-		UpdatedAt:   fixedTime,
-	},
-}
-
 func TestSaveTasks(t *testing.T) {
 	t.Run("should save tasks and return them", func(t *testing.T) {
 		storage := &s.StorageJSON{}
@@ -141,4 +130,16 @@ func assertBufferContainsTasks(t testing.TB, buffer *bytes.Buffer, tasks r.Tasks
 	if buffer.String() != string(expectedData) {
 		t.Fatalf("got %s, want %s", buffer.String(), string(expectedData))
 	}
+}
+
+var fixedTime = time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC)
+
+var sampleTasks = r.Tasks{
+	1: {
+		ID:          1,
+		Description: "description",
+		Status:      r.StatusTodo,
+		CreatedAt:   fixedTime,
+		UpdatedAt:   fixedTime,
+	},
 }
