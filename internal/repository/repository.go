@@ -1,4 +1,4 @@
-package task_repository
+package repository
 
 import (
 	"errors"
@@ -16,12 +16,12 @@ const (
 )
 
 type Repository interface {
-	ImportTasksData(tasks Tasks) Tasks
-	AddTask(description string) (Task, error)
-	UpdateTask(params UpdateTaskParams) (Task, error)
-	DeleteTask(id uint) (bool, error)
+	ImportTasksData(Tasks) Tasks
+	AddTask(string) (Task, error)
+	UpdateTask(UpdateTaskParams) (Task, error)
+	DeleteTask(uint) (bool, error)
 	FindAll() Tasks
-	FindMany(status Status) Tasks
+	FindMany(Status) Tasks
 }
 
 type Timer interface {
@@ -65,18 +65,18 @@ type UpdateTaskParams struct {
 	Status      *Status
 }
 
-type MemoTaskRepo struct {
+type TaskRepository struct {
 	Timer   Timer
 	Counter IDCounter
 	Tasks   Tasks
 }
 
-func (r *MemoTaskRepo) ImportTasksData(tasks Tasks) Tasks {
+func (r *TaskRepository) ImportTasksData(tasks Tasks) Tasks {
 	r.Tasks = tasks
 	return r.Tasks
 }
 
-func (r *MemoTaskRepo) AddTask(description string) (Task, error) {
+func (r *TaskRepository) AddTask(description string) (Task, error) {
 	if description == "" {
 		return Task{}, EmptyDescriptionError
 	}
@@ -99,7 +99,7 @@ func (r *MemoTaskRepo) AddTask(description string) (Task, error) {
 	return newTask, nil
 }
 
-func (r *MemoTaskRepo) UpdateTask(params UpdateTaskParams) (Task, error) {
+func (r *TaskRepository) UpdateTask(params UpdateTaskParams) (Task, error) {
 	task, err := r.findById(params.ID)
 	if err != nil {
 		return Task{}, err
@@ -122,7 +122,7 @@ func (r *MemoTaskRepo) UpdateTask(params UpdateTaskParams) (Task, error) {
 	return task, nil
 }
 
-func (r *MemoTaskRepo) DeleteTask(id uint) (bool, error) {
+func (r *TaskRepository) DeleteTask(id uint) (bool, error) {
 	_, err := r.findById(id)
 	if err != nil {
 		return false, err
@@ -132,11 +132,11 @@ func (r *MemoTaskRepo) DeleteTask(id uint) (bool, error) {
 	return true, nil
 }
 
-func (r *MemoTaskRepo) FindAll() Tasks {
+func (r *TaskRepository) FindAll() Tasks {
 	return r.Tasks
 }
 
-func (r *MemoTaskRepo) FindMany(status Status) Tasks {
+func (r *TaskRepository) FindMany(status Status) Tasks {
 	result := make(Tasks)
 	for id, task := range r.Tasks {
 		if task.Status == status {
@@ -146,7 +146,7 @@ func (r *MemoTaskRepo) FindMany(status Status) Tasks {
 	return result
 }
 
-func (r *MemoTaskRepo) findById(id uint) (Task, error) {
+func (r *TaskRepository) findById(id uint) (Task, error) {
 	task, exists := r.Tasks[int(id)]
 	if !exists {
 		return Task{}, TaskNotFoundError

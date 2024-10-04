@@ -1,4 +1,4 @@
-package task_repository_test
+package repository_test
 
 import (
 	"errors"
@@ -158,7 +158,7 @@ func TestUpdateTask(t *testing.T) {
 				},
 			}
 
-			repository := r.MemoTaskRepo{stubTimer, r.IDCounter{}, r.Tasks{1: t1}}
+			repository := r.TaskRepository{stubTimer, r.IDCounter{}, r.Tasks{1: t1}}
 			for _, tt := range updateTestCases {
 				t.Run(tt.name, func(t *testing.T) {
 					got, err := repository.UpdateTask(r.UpdateTaskParams{
@@ -372,11 +372,11 @@ var (
 	t5 = buildTask("attend meeting", 5, r.StatusDone)
 )
 
-func newTestRepository(tasks r.Tasks) *r.MemoTaskRepo {
+func newTestRepository(tasks r.Tasks) *r.TaskRepository {
 	if tasks == nil {
 		tasks = r.Tasks{}
 	}
-	return &r.MemoTaskRepo{
+	return &r.TaskRepository{
 		Timer:   stubTimer,
 		Counter: r.IDCounter{},
 		Tasks:   tasks,

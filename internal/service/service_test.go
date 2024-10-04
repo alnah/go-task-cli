@@ -11,124 +11,154 @@ import (
 )
 
 func TestAddTask(t *testing.T) {
-	t.Run("should add a task while verifying storage and repository interactions", func(t *testing.T) {
-		service, spyStorage, spyRepository := newTestService()
-		task, err := service.AddTask("buy groceries")
+	t.Run("should add a task while verifying storage and repository interactions",
+		func(t *testing.T) {
+			service, spyStorage, spyRepository := newTestService()
+			var reader bytes.Buffer
+			var writer bytes.Buffer
 
-		assertNoError(t, err)
-		assertTask(t, task, r.Task{})
-		assertCalls(t, spyStorage.calls, Calls{storageLoadTasks, storageSaveTasks})
-		assertCalls(t, spyRepository.calls, Calls{
-			repositoryImportTasksData,
-			repositoryAddTask,
-			repositoryFindAll,
+			task, err := service.AddTask(&reader, &writer, "buy groceries")
+
+			assertNoError(t, err)
+			assertTask(t, task, r.Task{})
+			assertCalls(t, spyStorage.calls, Calls{storageLoadTasks, storageSaveTasks})
+			assertCalls(t, spyRepository.calls, Calls{
+				repositoryImportTasksData,
+				repositoryAddTask,
+				repositoryFindAll,
+			})
 		})
-	})
 
 	t.Run("should return error when storage.LoadTasks fails", func(t *testing.T) {
 		service, spyStorage, _ := newTestService()
 		spyStorage.loadTasksErr = io.ErrClosedPipe
+		var reader bytes.Buffer
+		var writer bytes.Buffer
 
-		_, err := service.AddTask("buy groceries")
+		_, err := service.AddTask(&reader, &writer, "buy groceries")
 		assertError(t, err, io.ErrClosedPipe)
 	})
 
 	t.Run("should return error when repository.AddTask fails", func(t *testing.T) {
 		service, _, spyRepository := newTestService()
 		spyRepository.addTaskErr = io.ErrClosedPipe
+		var reader bytes.Buffer
+		var writer bytes.Buffer
 
-		_, err := service.AddTask("buy groceries")
+		_, err := service.AddTask(&reader, &writer, "buy groceries")
 		assertError(t, err, io.ErrClosedPipe)
 	})
 
 	t.Run("should return error when storage.SaveTasks fails", func(t *testing.T) {
 		service, spyStorage, _ := newTestService()
 		spyStorage.saveTasksErr = io.ErrClosedPipe
+		var reader bytes.Buffer
+		var writer bytes.Buffer
 
-		_, err := service.AddTask("buy groceries")
+		_, err := service.AddTask(&reader, &writer, "buy groceries")
 		assertError(t, err, io.ErrClosedPipe)
 	})
 }
 
 func TestUpdateTask(t *testing.T) {
-	t.Run("should update a task while verifying storage and repository interactions", func(t *testing.T) {
-		service, spyStorage, spyRepository := newTestService()
-		update := s.UpdateTaskParams{ID: 1, Description: ptrStr("cook dinner")}
-		task, err := service.UpdateTask(update)
+	t.Run("should update a task while verifying storage and repository interactions",
+		func(t *testing.T) {
+			service, spyStorage, spyRepository := newTestService()
+			var reader bytes.Buffer
+			var writer bytes.Buffer
 
-		assertNoError(t, err)
-		assertTask(t, task, r.Task{})
-		assertCalls(t, spyStorage.calls, Calls{storageLoadTasks, storageSaveTasks})
-		assertCalls(t, spyRepository.calls, Calls{
-			repositoryImportTasksData,
-			repositoryUpdateTask,
-			repositoryFindAll,
+			update := s.UpdateTaskParams{ID: 1, Description: ptrStr("cook dinner")}
+			task, err := service.UpdateTask(&reader, &writer, update)
+
+			assertNoError(t, err)
+			assertTask(t, task, r.Task{})
+			assertCalls(t, spyStorage.calls, Calls{storageLoadTasks, storageSaveTasks})
+			assertCalls(t, spyRepository.calls, Calls{
+				repositoryImportTasksData,
+				repositoryUpdateTask,
+				repositoryFindAll,
+			})
 		})
-	})
 
 	t.Run("should return error when storage.LoadTasks fails", func(t *testing.T) {
 		service, spyStorage, _ := newTestService()
 		spyStorage.loadTasksErr = io.ErrClosedPipe
-		update := s.UpdateTaskParams{ID: 1, Description: ptrStr("cook dinner")}
+		var reader bytes.Buffer
+		var writer bytes.Buffer
 
-		_, err := service.UpdateTask(update)
+		update := s.UpdateTaskParams{ID: 1, Description: ptrStr("cook dinner")}
+		_, err := service.UpdateTask(&reader, &writer, update)
 		assertError(t, err, io.ErrClosedPipe)
 	})
 
 	t.Run("should return error when repository.UpdateTask fails", func(t *testing.T) {
 		service, _, spyRepository := newTestService()
 		spyRepository.updateTaskErr = io.ErrClosedPipe
-		update := s.UpdateTaskParams{ID: 1, Description: ptrStr("cook dinner")}
+		var reader bytes.Buffer
+		var writer bytes.Buffer
 
-		_, err := service.UpdateTask(update)
+		update := s.UpdateTaskParams{ID: 1, Description: ptrStr("cook dinner")}
+		_, err := service.UpdateTask(&reader, &writer, update)
 		assertError(t, err, io.ErrClosedPipe)
 	})
 
 	t.Run("should return error when storage.SaveTasks fails", func(t *testing.T) {
 		service, spyStorage, _ := newTestService()
 		spyStorage.saveTasksErr = io.ErrClosedPipe
-		update := s.UpdateTaskParams{ID: 1, Description: ptrStr("cook dinner")}
+		var reader bytes.Buffer
+		var writer bytes.Buffer
 
-		_, err := service.UpdateTask(update)
+		update := s.UpdateTaskParams{ID: 1, Description: ptrStr("cook dinner")}
+		_, err := service.UpdateTask(&reader, &writer, update)
 		assertError(t, err, io.ErrClosedPipe)
 	})
 }
 
 func TestDeleteTask(t *testing.T) {
-	t.Run("should delete a task while verifying storage and repository interactions", func(t *testing.T) {
-		service, spyStorage, spyRepository := newTestService()
-		_, err := service.DeleteTask(1)
+	t.Run("should delete a task while verifying storage and repository interactions",
+		func(t *testing.T) {
+			service, spyStorage, spyRepository := newTestService()
+			var reader bytes.Buffer
+			var writer bytes.Buffer
 
-		assertNoError(t, err)
-		assertCalls(t, spyStorage.calls, Calls{storageLoadTasks, storageSaveTasks})
-		assertCalls(t, spyRepository.calls, Calls{
-			repositoryImportTasksData,
-			repositoryDeleteTask,
-			repositoryFindAll,
+			_, err := service.DeleteTask(&reader, &writer, 1)
+
+			assertNoError(t, err)
+			assertCalls(t, spyStorage.calls, Calls{storageLoadTasks, storageSaveTasks})
+			assertCalls(t, spyRepository.calls, Calls{
+				repositoryImportTasksData,
+				repositoryDeleteTask,
+				repositoryFindAll,
+			})
 		})
-	})
 
 	t.Run("should return error when storage.LoadTasks fails", func(t *testing.T) {
 		service, spyStorage, _ := newTestService()
 		spyStorage.loadTasksErr = io.ErrClosedPipe
+		var reader bytes.Buffer
+		var writer bytes.Buffer
 
-		_, err := service.DeleteTask(1)
+		_, err := service.DeleteTask(&reader, &writer, 1)
 		assertError(t, err, io.ErrClosedPipe)
 	})
 
 	t.Run("should return error when repository.DeleteTask fails", func(t *testing.T) {
 		service, _, spyRepository := newTestService()
 		spyRepository.deleteTaskErr = io.ErrClosedPipe
+		var reader bytes.Buffer
+		var writer bytes.Buffer
 
-		_, err := service.DeleteTask(1)
+		_, err := service.DeleteTask(&reader, &writer, 1)
 		assertError(t, err, io.ErrClosedPipe)
 	})
 
 	t.Run("should return error when storage.SaveTasks fails", func(t *testing.T) {
 		service, spyStorage, _ := newTestService()
 		spyStorage.saveTasksErr = io.ErrClosedPipe
+		var reader bytes.Buffer
+		var writer bytes.Buffer
 
-		_, err := service.DeleteTask(1)
+		_, err := service.DeleteTask(&reader, &writer, 1)
 		assertError(t, err, io.ErrClosedPipe)
 	})
 }
@@ -136,7 +166,9 @@ func TestDeleteTask(t *testing.T) {
 func TestListTasks(t *testing.T) {
 	t.Run("should list all tasks when nil is passed", func(t *testing.T) {
 		service, spyStorage, spyRepository := newTestService()
-		tasks, err := service.ListTasks(nil)
+		var reader bytes.Buffer
+
+		tasks, err := service.ListTasks(&reader, nil)
 
 		assertNoError(t, err)
 		assertTasks(t, tasks, r.Tasks{})
@@ -149,8 +181,10 @@ func TestListTasks(t *testing.T) {
 
 	t.Run(`should list all todo tasks when "todo" is passed`, func(t *testing.T) {
 		service, spyStorage, spyRepository := newTestService()
+		var reader bytes.Buffer
+
 		status := r.Status(r.StatusTodo)
-		tasks, err := service.ListTasks(&status)
+		tasks, err := service.ListTasks(&reader, &status)
 
 		assertNoError(t, err)
 		assertTasks(t, tasks, r.Tasks{})
@@ -161,24 +195,29 @@ func TestListTasks(t *testing.T) {
 		})
 	})
 
-	t.Run(`should list all in-process tasks when "in-process" is passed`, func(t *testing.T) {
-		service, spyStorage, spyRepository := newTestService()
-		status := r.Status(r.StatusInProcess)
-		tasks, err := service.ListTasks(&status)
+	t.Run(`should list all in-process tasks when "in-process" is passed`,
+		func(t *testing.T) {
+			service, spyStorage, spyRepository := newTestService()
+			var reader bytes.Buffer
 
-		assertNoError(t, err)
-		assertTasks(t, tasks, r.Tasks{})
-		assertCalls(t, spyStorage.calls, Calls{storageLoadTasks})
-		assertCalls(t, spyRepository.calls, Calls{
-			repositoryImportTasksData,
-			repositoryFindMany,
+			status := r.Status(r.StatusInProcess)
+			tasks, err := service.ListTasks(&reader, &status)
+
+			assertNoError(t, err)
+			assertTasks(t, tasks, r.Tasks{})
+			assertCalls(t, spyStorage.calls, Calls{storageLoadTasks})
+			assertCalls(t, spyRepository.calls, Calls{
+				repositoryImportTasksData,
+				repositoryFindMany,
+			})
 		})
-	})
 
 	t.Run(`should list all done tasks when "done" is passed`, func(t *testing.T) {
 		service, spyStorage, spyRepository := newTestService()
+		var reader bytes.Buffer
+
 		status := r.Status(r.StatusDone)
-		tasks, err := service.ListTasks(&status)
+		tasks, err := service.ListTasks(&reader, &status)
 
 		assertNoError(t, err)
 		assertTasks(t, tasks, r.Tasks{})
@@ -192,8 +231,9 @@ func TestListTasks(t *testing.T) {
 	t.Run("should return an error when storage.LoadTasks fails", func(t *testing.T) {
 		service, spyStorage, _ := newTestService()
 		spyStorage.loadTasksErr = io.ErrClosedPipe
+		var reader bytes.Buffer
 
-		_, err := service.ListTasks(nil)
+		_, err := service.ListTasks(&reader, nil)
 		assertError(t, err, io.ErrClosedPipe)
 	})
 }
@@ -223,7 +263,7 @@ func (s *spyStorage) SaveTasks(writer io.Writer, tasks r.Tasks) (r.Tasks, error)
 	return r.Tasks{}, s.saveTasksErr
 }
 
-func (s *spyStorage) LoadTasks(io.Reader) (r.Tasks, error) {
+func (s *spyStorage) LoadTasks(reader io.Reader) (r.Tasks, error) {
 	s.calls = append(s.calls, storageLoadTasks)
 	return r.Tasks{}, s.loadTasksErr
 }
@@ -301,12 +341,9 @@ func assertTasks(t testing.TB, got, want r.Tasks) {
 }
 
 func newTestService() (*s.TaskService, *spyStorage, *spyRepository) {
-	buffer := bytes.Buffer{}
 	spyStorage := &spyStorage{}
 	spyRepository := &spyRepository{}
 	service := &s.TaskService{
-		Reader:     &buffer,
-		Writer:     &buffer,
 		Storage:    spyStorage,
 		Repository: spyRepository,
 	}

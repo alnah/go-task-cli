@@ -14,7 +14,7 @@ import (
 
 func TestSaveTasks(t *testing.T) {
 	t.Run("should save tasks and return them", func(t *testing.T) {
-		storage := &s.StorageJSON{}
+		storage := &s.TaskStorage{}
 		buffer := &bytes.Buffer{}
 		savedTasks, err := storage.SaveTasks(buffer, sampleTasks)
 
@@ -24,7 +24,7 @@ func TestSaveTasks(t *testing.T) {
 	})
 
 	t.Run("should handle empty tasks gracefully", func(t *testing.T) {
-		storage := &s.StorageJSON{}
+		storage := &s.TaskStorage{}
 		buffer := &bytes.Buffer{}
 		savedTasks, err := storage.SaveTasks(buffer, r.Tasks{})
 
@@ -34,7 +34,7 @@ func TestSaveTasks(t *testing.T) {
 	})
 
 	t.Run("should return an error when failing to save tasks", func(t *testing.T) {
-		storage := &s.StorageJSON{}
+		storage := &s.TaskStorage{}
 		writer := &errorWriter{}
 		_, err := storage.SaveTasks(writer, sampleTasks)
 
@@ -44,7 +44,7 @@ func TestSaveTasks(t *testing.T) {
 
 func TestLoadTasks(t *testing.T) {
 	t.Run("should load tasks", func(t *testing.T) {
-		storage := &s.StorageJSON{}
+		storage := &s.TaskStorage{}
 		data, _ := json.Marshal(sampleTasks)
 		buffer := bytes.NewBuffer(data)
 		loadedTasks, err := storage.LoadTasks(buffer)
@@ -54,7 +54,7 @@ func TestLoadTasks(t *testing.T) {
 	})
 
 	t.Run("should handle empty tasks", func(t *testing.T) {
-		storage := &s.StorageJSON{}
+		storage := &s.TaskStorage{}
 		buffer := bytes.NewBuffer([]byte(`[]`))
 		loadedTasks, err := storage.LoadTasks(buffer)
 
@@ -63,7 +63,7 @@ func TestLoadTasks(t *testing.T) {
 	})
 
 	t.Run("should return error on invalid JSON", func(t *testing.T) {
-		storage := &s.StorageJSON{}
+		storage := &s.TaskStorage{}
 		buffer := bytes.NewBuffer([]byte(`[invalid json]`))
 		_, err := storage.LoadTasks(buffer)
 
@@ -71,7 +71,7 @@ func TestLoadTasks(t *testing.T) {
 	})
 
 	t.Run("should return an error when failing to load tasks", func(t *testing.T) {
-		storage := &s.StorageJSON{}
+		storage := &s.TaskStorage{}
 		reader := &errorReader{}
 		_, err := storage.LoadTasks(reader)
 
@@ -79,7 +79,7 @@ func TestLoadTasks(t *testing.T) {
 	})
 }
 
-var _ s.Storage = (*s.StorageJSON)(nil)
+var _ s.Storage = (*s.TaskStorage)(nil)
 
 type errorWriter struct{}
 
@@ -123,12 +123,12 @@ func assertTasks(t testing.TB, got, want r.Tasks) {
 
 func assertBufferContainsTasks(t testing.TB, buffer *bytes.Buffer, tasks r.Tasks) {
 	t.Helper()
-	expectedData, err := json.Marshal(tasks)
-	if err != nil {
-		t.Fatalf("failed to marshal tasks: %v", err)
+	expectedBuffer := &bytes.Buffer{}
+	if err := json.NewEncoder(expectedBuffer).Encode(tasks); err != nil {
+		t.Fatalf("failed to encode tasks: %v", err)
 	}
-	if buffer.String() != string(expectedData) {
-		t.Fatalf("got %s, want %s", buffer.String(), string(expectedData))
+	if buffer.String() != expectedBuffer.String() {
+		t.Fatalf("got %q, want %q", buffer.String(), expectedBuffer.String())
 	}
 }
 
