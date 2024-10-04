@@ -5,31 +5,72 @@ import (
 	"errors"
 	"fmt"
 	"io"
-
-	rp "github.com/alnah/task-tracker/internal/repository"
+	"os"
 )
 
-var SavingTasksError = errors.New("failed to save tasks")
-var LoadingTasksError = errors.New("failed to load tasks")
+var ErrSavingData = errors.New("failed to save data")
+var ErrLoadingData = errors.New("failed to load data")
 
-type Storage interface {
-	SaveTasks(io.Writer, rp.Tasks) (rp.Tasks, error)
-	LoadTasks(io.Reader) (rp.Tasks, error)
+type Storage[T any] interface {
+	SaveData(T) (T, error)
+	LoadData() (T, error)
 }
 
-type TaskStorage struct{}
+type JSONStorage[T any] struct{ Filepath string }
 
-func (s TaskStorage) SaveTasks(w io.Writer, tasks rp.Tasks) (rp.Tasks, error) {
-	if err := json.NewEncoder(w).Encode(tasks); err != nil {
-		return rp.Tasks{}, fmt.Errorf("%w: %+v", SavingTasksError, err)
+func (s *JSONStorage[T]) SaveData(data T) (T, error) {
+	file, err := os.OpenFile(s.Filepath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return data, fmt.Errorf("%w: %+v", ErrSavingData, err)
 	}
-	return tasks, nil
+
+	return s.saveDataToFile(file, data)
 }
 
-func (s *TaskStorage) LoadTasks(r io.Reader) (rp.Tasks, error) {
-	var tasks rp.Tasks
-	if err := json.NewDecoder(r).Decode(&tasks); err != nil {
-		return rp.Tasks{}, fmt.Errorf("%w: %+v", LoadingTasksError, err)
+func (s *JSONStorage[T]) LoadData() (T, error) {
+	file, err := os.OpenFile(s.Filepath, os.O_RDONLY, 0444)
+	if err != nil {
+		var zero T
+		return zero, fmt.Errorf("%w: %+v", ErrLoadingData, err)
 	}
-	return tasks, nil
+
+	return s.loadDataFromFile(file)
+}
+
+func (s *JSONStorage[T]) SaveDataToFile(file io.WriteCloser, data T) (T, error) {
+	return s.saveDataToFile(file, data)
+}
+
+func (s *JSONStorage[T]) LoadDataFromFile(file io.ReadCloser) (T, error) {
+	return s.loadDataFromFile(file)
+}
+
+func (s *JSONStorage[T]) saveDataToFile(file io.WriteCloser, data T) (T, error) {
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("error closing file: %+v\n", err)
+		}
+	}()
+
+	if err := json.NewEncoder(file).Encode(data); err != nil {
+		return data, fmt.Errorf("%w: %+v", ErrSavingData, err)
+	}
+
+	return data, nil
+}
+
+func (s *JSONStorage[T]) loadDataFromFile(file io.ReadCloser) (T, error) {
+	defer func() {
+		if err := file.Close(); err != nil {
+			fmt.Printf("error closing file: %+v\n", err)
+		}
+	}()
+
+	var data T
+	if err := json.NewDecoder(file).Decode(&data); err != nil {
+		var zero T
+		return zero, fmt.Errorf("%w: %+v", ErrLoadingData, err)
+	}
+
+	return data, nil
 }
