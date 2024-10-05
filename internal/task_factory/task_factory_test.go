@@ -10,7 +10,7 @@ import (
 
 func TestRealTimeProvider_Now(t *testing.T) {
 	t.Run("should return the time now", func(t *testing.T) {
-		timer := f.RealTimeProvider{}
+		timer := f.DefaultTimeProvider{}
 		if time.Now().Truncate(time.Second) != timer.Now().Truncate(time.Second) {
 			t.Errorf("expected %v, got %v", time.Now().Truncate(time.Second),
 				timer.Now().Truncate(time.Second))
@@ -68,7 +68,7 @@ func TestDefaultTaskFactory_Validate(t *testing.T) {
 	}
 }
 
-func TestTaskGenerator_NewTask(t *testing.T) {
+func TestDefaultTaskFactory_NewTask(t *testing.T) {
 	factory := &f.DefaultTaskFactory{
 		Timer:       mockTimer,
 		IDGenerator: &f.DefaultIDGenerator{},

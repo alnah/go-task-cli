@@ -39,9 +39,9 @@ type TaskFactory interface {
 	NewTask(string, Status) (*Task, error)
 }
 
-type RealTimeProvider struct{}
+type DefaultTimeProvider struct{}
 
-func (rtp RealTimeProvider) Now() time.Time {
+func (rtp DefaultTimeProvider) Now() time.Time {
 	return time.Now()
 }
 
