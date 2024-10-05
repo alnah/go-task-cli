@@ -70,8 +70,8 @@ func TestDefaultTaskFactory_Validate(t *testing.T) {
 
 func TestDefaultTaskFactory_NewTask(t *testing.T) {
 	factory := &f.DefaultTaskFactory{
-		Timer:       mockTimer,
-		IDGenerator: &f.DefaultIDGenerator{},
+		TimeProvider: mockTimer,
+		IDGenerator:  &f.DefaultIDGenerator{},
 	}
 
 	testCases := []struct {
@@ -168,8 +168,8 @@ func TestDefaultIDGenerator_NextID(t *testing.T) {
 func TestDefaultTaskFactory_MultipleTasks(t *testing.T) {
 	idGen := &f.DefaultIDGenerator{}
 	factory := &f.DefaultTaskFactory{
-		Timer:       mockTimer,
-		IDGenerator: idGen,
+		TimeProvider: mockTimer,
+		IDGenerator:  idGen,
 	}
 
 	descriptions := []string{"Task 1", "Task 2", "Task 3"}

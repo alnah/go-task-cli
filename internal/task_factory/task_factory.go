@@ -59,8 +59,8 @@ func (idg *DefaultIDGenerator) NextID() uint {
 }
 
 type DefaultTaskFactory struct {
-	Timer       TimeProvider
-	IDGenerator IDGenerator
+	TimeProvider TimeProvider
+	IDGenerator  IDGenerator
 }
 
 func (tf *DefaultTaskFactory) NewTask(description string, status Status) (*Task, error) {
@@ -68,8 +68,8 @@ func (tf *DefaultTaskFactory) NewTask(description string, status Status) (*Task,
 		ID:          tf.IDGenerator.NextID(),
 		Description: description,
 		Status:      status,
-		CreatedAt:   tf.Timer.Now(),
-		UpdatedAt:   tf.Timer.Now(),
+		CreatedAt:   tf.TimeProvider.Now(),
+		UpdatedAt:   tf.TimeProvider.Now(),
 	}
 
 	if err := task.Validate(); err != nil {
