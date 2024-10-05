@@ -67,7 +67,7 @@ func TestTask_Validate(t *testing.T) {
 }
 
 func TestTaskFactory_NewTask(t *testing.T) {
-	mockTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+	mockTime := time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC)
 	mockTimer := &MockTimer{FixedTime: mockTime}
 	idGen := &f.IDGenerator{}
 	factory := &f.TaskFactory{
@@ -149,7 +149,7 @@ func TestIDGenerator_NextID(t *testing.T) {
 }
 
 func TestTaskFactory_MultipleTasks(t *testing.T) {
-	mockTime := time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)
+	mockTime := time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC)
 	mockTimer := &MockTimer{FixedTime: mockTime}
 	idGen := &f.IDGenerator{}
 	factory := &f.TaskFactory{

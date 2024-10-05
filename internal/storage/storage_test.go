@@ -9,9 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
-	r "github.com/alnah/task-tracker/internal/repository"
 	s "github.com/alnah/task-tracker/internal/storage"
 )
 
@@ -20,20 +18,20 @@ func TestSaveData(t *testing.T) {
 		tmpfile := mustCreateTempFile(t)
 		defer os.Remove(tmpfile.Name())
 
-		storage := &s.JSONStorage[r.Tasks]{Filepath: tmpfile.Name()}
-		savedData, err := storage.SaveData(sampleTasks)
+		storage := s.NewJSONFileDataStore[Data](tmpfile.Name())
+		savedData, err := storage.SaveData(sampleData)
 
 		assertNoError(t, err)
-		assertData(t, savedData, sampleTasks)
-		assertFileContainsData(t, tmpfile.Name(), sampleTasks)
+		assertData(t, savedData, sampleData)
+		assertFileContainsData(t, tmpfile.Name(), sampleData)
 	})
 
 	t.Run("should handle empty data gracefully", func(t *testing.T) {
 		tmpfile := mustCreateTempFile(t)
 		defer os.Remove(tmpfile.Name())
 
-		storage := &s.JSONStorage[r.Tasks]{Filepath: tmpfile.Name()}
-		var emptyTasks r.Tasks
+		storage := s.NewJSONFileDataStore[Data](tmpfile.Name())
+		var emptyTasks Data
 		savedData, err := storage.SaveData(emptyTasks)
 
 		assertNoError(t, err)
@@ -42,8 +40,8 @@ func TestSaveData(t *testing.T) {
 	})
 
 	t.Run("should return an error when failing to save data", func(t *testing.T) {
-		storage := &s.JSONStorage[r.Tasks]{Filepath: "/invalid/path/to/file.json"}
-		_, err := storage.SaveData(sampleTasks)
+		storage := s.NewJSONFileDataStore[Data]("/invalid/path/to/file.json")
+		_, err := storage.SaveData(sampleData)
 
 		assertError(t, err, s.ErrSavingData)
 	})
@@ -52,10 +50,8 @@ func TestSaveData(t *testing.T) {
 		tmpfile := mustCreateTempFile(t)
 		defer os.Remove(tmpfile.Name())
 
-		// Simulate JSON encoding error
 		badData := BadData{}
-
-		storage := &s.JSONStorage[BadData]{Filepath: tmpfile.Name()}
+		storage := s.NewJSONFileDataStore[BadData](tmpfile.Name())
 		_, err := storage.SaveData(badData)
 
 		assertError(t, err, s.ErrSavingData)
@@ -68,9 +64,9 @@ func TestSaveData(t *testing.T) {
 		}
 		defer os.Remove(mockFile.Name())
 
-		storage := &s.JSONStorage[r.Tasks]{Filepath: mockFile.Name()}
+		storage := &s.JSONFileDataStore[Data]{Filepath: "/non/existent/file.json"}
 		output := captureOutput(func() {
-			_, _ = storage.SaveDataToFile(mockFile, sampleTasks)
+			_, _ = storage.SaveDataToFile(mockFile, sampleData)
 		})
 
 		if !strings.Contains(output, "error closing file") {
@@ -81,44 +77,44 @@ func TestSaveData(t *testing.T) {
 
 func TestLoadData(t *testing.T) {
 	t.Run("should load data", func(t *testing.T) {
-		tmpfile := mustCreateTempFileWithData(t, sampleTasks)
+		tmpfile := mustCreateTempFileWithData(t, sampleData)
 		defer os.Remove(tmpfile.Name())
 
-		storage := &s.JSONStorage[r.Tasks]{Filepath: tmpfile.Name()}
+		storage := s.NewJSONFileDataStore[Data](tmpfile.Name())
 		loadedData, err := storage.LoadData()
 
 		assertNoError(t, err)
-		assertData(t, loadedData, sampleTasks)
+		assertData(t, loadedData, sampleData)
 	})
 
 	t.Run("should handle empty data", func(t *testing.T) {
-		tmpfile := mustCreateTempFileWithData(t, r.Tasks{})
+		tmpfile := mustCreateTempFileWithData(t, Data{})
 		defer os.Remove(tmpfile.Name())
 
-		storage := &s.JSONStorage[r.Tasks]{Filepath: tmpfile.Name()}
+		storage := s.NewJSONFileDataStore[Data](tmpfile.Name())
 		loadedData, err := storage.LoadData()
 
 		assertNoError(t, err)
-		assertData(t, loadedData, r.Tasks{})
+		assertData(t, loadedData, Data{})
 	})
 
 	t.Run("should return error on invalid JSON", func(t *testing.T) {
 		tmpfile := mustCreateTempFile(t)
 		defer os.Remove(tmpfile.Name())
 
-		// Write invalid JSON to the file
 		if err := os.WriteFile(tmpfile.Name(), []byte(`invalid json`), 0644); err != nil {
 			t.Fatalf("failed to write invalid JSON: %v", err)
 		}
 
-		storage := &s.JSONStorage[r.Tasks]{Filepath: tmpfile.Name()}
+		storage := s.NewJSONFileDataStore[Data](tmpfile.Name())
 		_, err := storage.LoadData()
 
 		assertError(t, err, s.ErrLoadingData)
 	})
 
 	t.Run("should return an error when failing to load data", func(t *testing.T) {
-		storage := &s.JSONStorage[r.Tasks]{Filepath: "/non/existent/file.json"}
+
+		storage := s.NewJSONFileDataStore[BadData]("/non/existent/file.json")
 		_, err := storage.LoadData()
 
 		assertError(t, err, s.ErrLoadingData)
@@ -126,12 +122,12 @@ func TestLoadData(t *testing.T) {
 
 	t.Run("should handle error when closing file during LoadData", func(t *testing.T) {
 		mockFile := &MockReadCloser{
-			File:       mustCreateTempFileWithData(t, sampleTasks),
+			File:       mustCreateTempFileWithData(t, sampleData),
 			CloseError: errors.New("mock close error"),
 		}
 		defer os.Remove(mockFile.Name())
 
-		storage := &s.JSONStorage[r.Tasks]{Filepath: mockFile.Name()}
+		storage := s.NewJSONFileDataStore[BadData](mockFile.Name())
 		output := captureOutput(func() {
 			_, _ = storage.LoadDataFromFile(mockFile)
 		})
@@ -142,16 +138,14 @@ func TestLoadData(t *testing.T) {
 	})
 }
 
-var fixedTime = time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC)
+type Data struct {
+	ID    uint
+	Title string
+}
 
-var sampleTasks = r.Tasks{
-	1: {
-		ID:          1,
-		Description: "description",
-		Status:      r.StatusTodo,
-		CreatedAt:   fixedTime,
-		UpdatedAt:   fixedTime,
-	},
+var sampleData = Data{
+	ID:    1,
+	Title: "description",
 }
 
 type BadData struct{}

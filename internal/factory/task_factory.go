@@ -25,7 +25,7 @@ type Task struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-type Tasks map[uint]Task
+type Tasks map[uint]*Task
 
 type Timer interface {
 	Now() time.Time

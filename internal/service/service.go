@@ -1,62 +1,52 @@
 package service
 
 import (
-	"io"
-
-	rp "github.com/alnah/task-tracker/internal/repository"
+	r "github.com/alnah/task-tracker/internal/repository"
 	s "github.com/alnah/task-tracker/internal/storage"
 )
 
 type Service interface {
-	AddTask(io.Reader, io.Writer, string) (rp.Task, error)
-	UpdateTask(io.Reader, io.Writer, UpdateTaskParams) (rp.Task, error)
-	DeleteTask(io.Reader, uint) (bool, error)
-	ListTasks(io.Reader, *rp.Status) (rp.Tasks, error)
+	AddTask(string) (r.Task, error)
+	UpdateTask(uint, *string, *r.Status) (r.Task, error)
+	DeleteTask(uint) (bool, error)
+	ListTasks(*r.Status) (r.Tasks, error)
 }
 
 type TaskService struct {
-	Storage    s.Storage
-	Repository rp.Repository
+	Storage    s.DataStore[r.Tasks]
+	Repository r.TaskRepository
 }
 
 type UpdateTaskParams struct {
 	ID          uint
 	Description *string
-	Status      *rp.Status
+	Status      *r.Status
 }
 
-func (s *TaskService) AddTask(
-	r io.Reader,
-	w io.Writer,
-	description string,
-) (rp.Task, error) {
-	if _, loadErr := s.loadAndImportTasks(r); loadErr != nil {
-		return rp.Task{}, loadErr
+func (s *TaskService) AddTask(description string) (r.Task, error) {
+	if _, loadErr := s.loadAndImportTasks(); loadErr != nil {
+		return r.Task{}, loadErr
 	}
 
 	task, addErr := s.Repository.AddTask(description)
 	if addErr != nil {
-		return rp.Task{}, addErr
+		return r.Task{}, addErr
 	}
 
-	_, saveErr := s.Storage.SaveTasks(w, s.Repository.FindAll())
+	_, saveErr := s.Storage.SaveTasks(s.Writer, s.Repository.FindAll())
 	if saveErr != nil {
-		return rp.Task{}, saveErr
+		return r.Task{}, saveErr
 	}
 
 	return task, nil
 }
 
-func (s *TaskService) UpdateTask(
-	r io.Reader,
-	w io.Writer,
-	params UpdateTaskParams,
-) (rp.Task, error) {
-	if _, loadErr := s.loadAndImportTasks(r); loadErr != nil {
-		return rp.Task{}, loadErr
+func (s *TaskService) UpdateTask(params UpdateTaskParams) (r.Task, error) {
+	if _, loadErr := s.loadAndImportTasks(); loadErr != nil {
+		return r.Task{}, loadErr
 	}
 
-	updateParams := rp.UpdateTaskParams{
+	updateParams := r.UpdateTaskParams{
 		ID:          params.ID,
 		Description: params.Description,
 		Status:      params.Status,
@@ -64,23 +54,19 @@ func (s *TaskService) UpdateTask(
 
 	task, updateErr := s.Repository.UpdateTask(updateParams)
 	if updateErr != nil {
-		return rp.Task{}, updateErr
+		return r.Task{}, updateErr
 	}
 
-	_, saveErr := s.Storage.SaveTasks(w, s.Repository.FindAll())
+	_, saveErr := s.Storage.SaveTasks(s.Writer, s.Repository.FindAll())
 	if saveErr != nil {
-		return rp.Task{}, saveErr
+		return r.Task{}, saveErr
 	}
 
 	return task, nil
 }
 
-func (s *TaskService) DeleteTask(
-	r io.Reader,
-	w io.Writer,
-	id uint,
-) (bool, error) {
-	if _, loadErr := s.loadAndImportTasks(r); loadErr != nil {
+func (s *TaskService) DeleteTask(id uint) (bool, error) {
+	if _, loadErr := s.loadAndImportTasks(); loadErr != nil {
 		return false, loadErr
 	}
 
@@ -88,7 +74,7 @@ func (s *TaskService) DeleteTask(
 		return false, deleteErr
 	}
 
-	_, saveErr := s.Storage.SaveTasks(w, s.Repository.FindAll())
+	_, saveErr := s.Storage.SaveTasks(s.Writer, s.Repository.FindAll())
 	if saveErr != nil {
 		return false, saveErr
 	}
@@ -96,12 +82,9 @@ func (s *TaskService) DeleteTask(
 	return true, nil
 }
 
-func (s *TaskService) ListTasks(
-	r io.Reader,
-	status *rp.Status,
-) (rp.Tasks, error) {
-	if _, loadErr := s.loadAndImportTasks(r); loadErr != nil {
-		return rp.Tasks{}, loadErr
+func (s *TaskService) ListTasks(status *r.Status) (r.Tasks, error) {
+	if _, loadErr := s.loadAndImportTasks(); loadErr != nil {
+		return r.Tasks{}, loadErr
 	}
 
 	if status != nil {
@@ -111,10 +94,10 @@ func (s *TaskService) ListTasks(
 	return s.Repository.FindAll(), nil
 }
 
-func (s *TaskService) loadAndImportTasks(r io.Reader) (rp.Tasks, error) {
-	loadedTasks, loadErr := s.Storage.LoadTasks(r)
+func (s *TaskService) loadAndImportTasks() (r.Tasks, error) {
+	loadedTasks, loadErr := s.Storage.LoadTasks(s.Reader)
 	if loadErr != nil {
-		return rp.Tasks{}, loadErr
+		return r.Tasks{}, loadErr
 	}
 
 	tasks := s.Repository.ImportTasksData(loadedTasks)

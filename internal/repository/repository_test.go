@@ -95,7 +95,7 @@ func TestAddTask(t *testing.T) {
 	t.Run("should handle empty description", func(t *testing.T) {
 		repository := newTestRepository(nil)
 		_, err := repository.AddTask("")
-		assertError(t, err, r.EmptyDescriptionError)
+		assertError(t, err, r.ErrEmptyDescription)
 	})
 
 	t.Run("should restrict task description to 300 characters",
@@ -103,7 +103,7 @@ func TestAddTask(t *testing.T) {
 			repository := newTestRepository(nil)
 			longDescription := strings.Repeat("a", 301)
 			_, err := repository.AddTask(longDescription)
-			assertError(t, err, r.DescriptionTooLongError)
+			assertError(t, err, r.ErrDescriptionTooLong)
 		})
 }
 func TestUpdateTask(t *testing.T) {
@@ -158,7 +158,7 @@ func TestUpdateTask(t *testing.T) {
 				},
 			}
 
-			repository := r.TaskRepository{stubTimer, r.IDCounter{}, r.Tasks{1: t1}}
+			repository := r.FileTaskRepository{stubTimer, r.IDCounter{}, r.Tasks{1: t1}}
 			for _, tt := range updateTestCases {
 				t.Run(tt.name, func(t *testing.T) {
 					got, err := repository.UpdateTask(r.UpdateTaskParams{
@@ -195,7 +195,7 @@ func TestUpdateTask(t *testing.T) {
 			ID:     2,
 			Status: inProcess,
 		})
-		assertError(t, err, r.TaskNotFoundError)
+		assertError(t, err, r.ErrTaskNotFound)
 	})
 
 	t.Run("should handle duplicate descriptions without errors",
@@ -224,7 +224,7 @@ func TestUpdateTask(t *testing.T) {
 			ID:          1,
 			Description: &longDescription,
 		})
-		assertError(t, err, r.DescriptionTooLongError)
+		assertError(t, err, r.ErrDescriptionTooLong)
 	})
 }
 
@@ -259,7 +259,7 @@ func TestDeleteTask(t *testing.T) {
 			initialTasks:  r.Tasks{1: buildTask("buy groceries", 1, r.StatusTodo)},
 			taskToDelete:  2,
 			expectedTasks: r.Tasks{1: buildTask("buy groceries", 1, r.StatusTodo)},
-			expectedError: r.TaskNotFoundError,
+			expectedError: r.ErrTaskNotFound,
 		},
 	}
 
@@ -372,11 +372,11 @@ var (
 	t5 = buildTask("attend meeting", 5, r.StatusDone)
 )
 
-func newTestRepository(tasks r.Tasks) *r.TaskRepository {
+func newTestRepository(tasks r.Tasks) *r.FileTaskRepository {
 	if tasks == nil {
 		tasks = r.Tasks{}
 	}
-	return &r.TaskRepository{
+	return &r.FileTaskRepository{
 		Timer:   stubTimer,
 		Counter: r.IDCounter{},
 		Tasks:   tasks,

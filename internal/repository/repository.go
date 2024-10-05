@@ -2,155 +2,165 @@ package repository
 
 import (
 	"errors"
-	"time"
+	"fmt"
+
+	f "github.com/alnah/task-tracker/internal/factory"
+	s "github.com/alnah/task-tracker/internal/storage"
 )
 
-var EmptyDescriptionError = errors.New("description can't be empty")
-var DescriptionTooLongError = errors.New("description can't exceed 300 characters")
-var TaskNotFoundError = errors.New("task not found")
+var ErrTaskNotFound = errors.New("task not found")
 
-const (
-	StatusTodo      Status = "todo"
-	StatusInProcess Status = "in-process"
-	StatusDone      Status = "done"
-)
-
-type Repository interface {
-	ImportTasksData(Tasks) Tasks
-	AddTask(string) (Task, error)
-	UpdateTask(UpdateTaskParams) (Task, error)
-	DeleteTask(uint) (bool, error)
-	FindAll() Tasks
-	FindMany(Status) Tasks
+type TaskRepository interface {
+	CreateTask(string) (f.Task, error)
+	UpdateTask(UpdateTaskParams) (f.Task, error)
+	DeleteTask(uint) (f.Task, error)
+	ReadManyTasks(f.Status) (f.Tasks, error)
+	ReadAllTasks() (f.Tasks, error)
 }
-
-type Timer interface {
-	Now() time.Time
-}
-
-type Counter interface {
-	Increment() uint
-}
-
-type RealTimer struct{}
-
-func (t RealTimer) Now() time.Time {
-	return time.Now()
-}
-
-type IDCounter struct {
-	Value uint
-}
-
-func (c *IDCounter) Increment() uint {
-	c.Value++
-	return c.Value
-}
-
-type Status string
-
-type Task struct {
-	Description string    `json:"description"`
-	ID          uint      `json:"id"`
-	Status      Status    `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-type Tasks map[int]Task
 
 type UpdateTaskParams struct {
 	ID          uint
 	Description *string
-	Status      *Status
+	Status      *f.Status
 }
 
-type TaskRepository struct {
-	Timer   Timer
-	Counter IDCounter
-	Tasks   Tasks
+type FileTaskRepository struct {
+	Tasks       f.Tasks
+	TaskFactory f.TaskFactory
+	DataStore   s.DataStore[f.Tasks]
 }
 
-func (r *TaskRepository) ImportTasksData(tasks Tasks) Tasks {
-	r.Tasks = tasks
-	return r.Tasks
-}
-
-func (r *TaskRepository) AddTask(description string) (Task, error) {
-	if description == "" {
-		return Task{}, EmptyDescriptionError
+func NewFileTaskRepository(
+	factory f.TaskFactory,
+	dataStore s.DataStore[f.Tasks],
+) (*FileTaskRepository, error) {
+	repo := &FileTaskRepository{
+		TaskFactory: factory,
+		DataStore:   dataStore,
+		Tasks:       make(f.Tasks),
 	}
 
-	if len(description) > 300 {
-		return Task{}, DescriptionTooLongError
+	if err := repo.initializeIDGenerator(); err != nil {
+		return nil, err
 	}
-
-	id := r.Counter.Increment()
-	now := r.Timer.Now()
-	newTask := Task{
-		Description: description,
-		ID:          id,
-		Status:      StatusTodo,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
-
-	r.Tasks[int(id)] = newTask
-	return newTask, nil
+	return repo, nil
 }
 
-func (r *TaskRepository) UpdateTask(params UpdateTaskParams) (Task, error) {
+func (r *FileTaskRepository) CreateTask(description string) (f.Task, error) {
+	if err := r.loadTasks(); err != nil {
+		return f.Task{}, fmt.Errorf("error while creating task: %w", err)
+	}
+
+	task, err := r.TaskFactory.NewTask(description, f.Todo)
+	if err != nil {
+		return f.Task{}, fmt.Errorf("error while creating task: %w", err)
+	}
+	r.Tasks[task.ID] = task
+
+	if _, err = r.DataStore.SaveData(r.Tasks); err != nil {
+		return f.Task{}, fmt.Errorf("error while creating tasks: %w", err)
+	}
+	return *task, nil
+}
+
+func (r *FileTaskRepository) UpdateTask(params UpdateTaskParams) (f.Task, error) {
+	if err := r.loadTasks(); err != nil {
+		return f.Task{}, fmt.Errorf("error while updating task: %w", err)
+	}
+
 	task, err := r.findById(params.ID)
 	if err != nil {
-		return Task{}, err
-	}
-
-	if params.Description != nil && len(*params.Description) > 300 {
-		return Task{}, DescriptionTooLongError
+		return f.Task{}, fmt.Errorf("error while updating task: %w", err)
 	}
 
 	if params.Description != nil {
 		task.Description = *params.Description
 	}
-
 	if params.Status != nil {
-		task.Status = Status(*params.Status)
+		task.Status = *params.Status
 	}
 
-	task.UpdatedAt = r.Timer.Now()
-	r.Tasks[int(params.ID)] = task
-	return task, nil
+	task.UpdatedAt = r.TaskFactory.Timer.Now()
+	r.Tasks[params.ID] = task
+	if _, err = r.DataStore.SaveData(r.Tasks); err != nil {
+		return f.Task{}, fmt.Errorf("error while updating task: %w", err)
+	}
+	return *task, nil
 }
 
-func (r *TaskRepository) DeleteTask(id uint) (bool, error) {
-	_, err := r.findById(id)
+func (r *FileTaskRepository) DeleteTask(id uint) (f.Task, error) {
+	if err := r.loadTasks(); err != nil {
+		return f.Task{}, fmt.Errorf("error while deleting task: %w", err)
+	}
+
+	task, err := r.findById(id)
 	if err != nil {
-		return false, err
+		return f.Task{}, fmt.Errorf("error while deleting task: %w", err)
 	}
 
-	delete(r.Tasks, int(id))
-	return true, nil
+	delete(r.Tasks, id)
+	if _, err = r.DataStore.SaveData(r.Tasks); err != nil {
+		return f.Task{}, fmt.Errorf("error while deleting task: %w", err)
+	}
+	return *task, nil
 }
 
-func (r *TaskRepository) FindAll() Tasks {
-	return r.Tasks
-}
+func (r *FileTaskRepository) ReadManyTasks(status f.Status) (f.Tasks, error) {
+	if err := r.loadTasks(); err != nil {
+		return f.Tasks{}, fmt.Errorf("error while reading tasks: %w", err)
+	}
 
-func (r *TaskRepository) FindMany(status Status) Tasks {
-	result := make(Tasks)
-	for id, task := range r.Tasks {
+	filteredTasks := f.Tasks{}
+	for _, task := range r.Tasks {
 		if task.Status == status {
-			result[id] = task
+			filteredTasks[task.ID] = task
 		}
 	}
-	return result
+	return filteredTasks, nil
 }
 
-func (r *TaskRepository) findById(id uint) (Task, error) {
-	task, exists := r.Tasks[int(id)]
-	if !exists {
-		return Task{}, TaskNotFoundError
+func (r *FileTaskRepository) ReadAllTasks() (f.Tasks, error) {
+	if err := r.loadTasks(); err != nil {
+		return f.Tasks{}, fmt.Errorf("error while reading all tasks: %w", err)
+	}
+	return r.Tasks, nil
+}
+
+func (r *FileTaskRepository) initializeIDGenerator() error {
+	err := r.loadTasks()
+	if err != nil {
+		if errors.Is(err, s.ErrLoadingData) {
+			r.Tasks = make(f.Tasks)
+			r.TaskFactory.IDGenerator.Value = 0
+			return nil
+		}
+		return fmt.Errorf("error initializing ID generator: %w", err)
 	}
 
+	var maxID uint
+	for id := range r.Tasks {
+		if id > maxID {
+			maxID = id
+		}
+	}
+	r.TaskFactory.IDGenerator.Value = maxID
+	return nil
+}
+
+func (r *FileTaskRepository) loadTasks() error {
+	tasks, err := r.DataStore.LoadData()
+	if err != nil {
+		return err
+	}
+	r.Tasks = tasks
+	return nil
+}
+
+func (r *FileTaskRepository) findById(id uint) (*f.Task, error) {
+	task, ok := r.Tasks[id]
+	if !ok {
+		return &f.Task{}, fmt.Errorf("error while finding task with ID %d: %w",
+			id, ErrTaskNotFound)
+	}
 	return task, nil
 }
