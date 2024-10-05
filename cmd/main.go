@@ -4,23 +4,23 @@ import (
 	"fmt"
 	"log"
 
-	s "github.com/alnah/task-tracker/internal/storage"
-	f "github.com/alnah/task-tracker/internal/task_factory"
-	r "github.com/alnah/task-tracker/internal/task_repository"
+	ds "github.com/alnah/task-tracker/internal/data_store"
+	tf "github.com/alnah/task-tracker/internal/task_factory"
+	tr "github.com/alnah/task-tracker/internal/task_repository"
 )
 
 func main() {
 
-	dataStore, err := s.NewJSONFileDataStore[f.Tasks]("tasks")
-	taskFactory := f.TaskFactory{
-		Timer:       f.RealTimer{},
-		IDGenerator: f.IDGenerator{},
+	dataStore, err := ds.NewJSONFileDataStore[tf.Tasks]("tasks")
+	taskFactory := tf.DefaultTaskFactory{
+		Timer:       &tf.DefaultTimeProvider{},
+		IDGenerator: &tf.DefaultIDGenerator{},
 	}
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	taskRepository, err := r.NewFileTaskRepository(taskFactory, dataStore)
+	taskRepository, err := tr.NewFileTaskRepository(taskFactory, *dataStore)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,8 +50,8 @@ func main() {
 	}
 
 	var description string = "Hello, World!"
-	var status f.Status = f.Done
-	if _, err := taskRepository.UpdateTask(r.UpdateTaskParams{
+	var status tf.Status = tf.Done
+	if _, err := taskRepository.UpdateTask(tr.UpdateTaskParams{
 		ID:          3,
 		Description: &description,
 		Status:      &status,
@@ -59,7 +59,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	tasks, err := taskRepository.ReadManyTasks(f.Done)
+	tasks, err := taskRepository.ReadManyTasks(tf.Done)
 	if err != nil {
 		log.Fatalf("Failed to read tasks: %v", err) // Handle error
 	}
