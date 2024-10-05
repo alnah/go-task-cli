@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	f "github.com/alnah/task-tracker/internal/factory"
+	f "github.com/alnah/task-tracker/internal/task_factory"
 )
 
 type MockTimer struct {
