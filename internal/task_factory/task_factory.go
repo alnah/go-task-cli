@@ -32,6 +32,7 @@ type TimeProvider interface {
 }
 
 type IDGenerator interface {
+	SetID(uint) uint
 	NextID() uint
 }
 
@@ -46,6 +47,11 @@ func (rtp DefaultTimeProvider) Now() time.Time {
 }
 
 type DefaultIDGenerator struct{ Value uint }
+
+func (idg *DefaultIDGenerator) SetID(value uint) uint {
+	idg.Value = value
+	return idg.Value
+}
 
 func (idg *DefaultIDGenerator) NextID() uint {
 	idg.Value++

@@ -137,6 +137,24 @@ func TestDefaultTaskFactory_NewTask(t *testing.T) {
 	}
 }
 
+func TestDefaultIDGenerator_SetID(t *testing.T) {
+	idGen := &f.DefaultIDGenerator{}
+	testCases := []struct {
+		input    uint
+		expected uint
+	}{
+		{0, 0},
+		{100, 100},
+		{1000, 1000},
+	}
+
+	for _, tc := range testCases {
+		if idGen.SetID(tc.input) != tc.expected {
+			t.Errorf("expected ID to be %d, got %d", tc.expected, idGen.Value)
+		}
+	}
+}
+
 func TestDefaultIDGenerator_NextID(t *testing.T) {
 	idGen := &f.DefaultIDGenerator{}
 	for i := 1; i <= 5; i++ {
