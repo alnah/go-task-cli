@@ -1,4 +1,4 @@
-package storage
+package data_store
 
 import (
 	"encoding/json"

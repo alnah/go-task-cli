@@ -1,4 +1,4 @@
-package storage_test
+package data_store_test
 
 import (
 	"bytes"
@@ -10,15 +10,15 @@ import (
 	"strings"
 	"testing"
 
-	s "github.com/alnah/task-tracker/internal/storage"
+	ds "github.com/alnah/task-tracker/internal/data_store"
 )
 
-func TestSaveData(t *testing.T) {
+func TestJSONFileDataStore_SaveData(t *testing.T) {
 	t.Run("should save data and return it", func(t *testing.T) {
 		tmpfile := mustCreateTempFile(t)
 		defer os.Remove("../data")
 
-		storage, err := s.NewJSONFileDataStore[Data](tmpfile.Name())
+		storage, err := ds.NewJSONFileDataStore[Data](tmpfile.Name())
 		assertNoError(t, err)
 
 		savedData, err := storage.SaveData(sampleData)
@@ -32,7 +32,7 @@ func TestSaveData(t *testing.T) {
 		tmpfile := mustCreateTempFile(t)
 		defer os.Remove("../data")
 
-		storage, err := s.NewJSONFileDataStore[Data](tmpfile.Name())
+		storage, err := ds.NewJSONFileDataStore[Data](tmpfile.Name())
 		assertNoError(t, err)
 
 		var emptyData Data
@@ -45,7 +45,7 @@ func TestSaveData(t *testing.T) {
 
 	t.Run("should return an error when failing to create directory", func(t *testing.T) {
 		invalidPath := "/invalid/path/to/file"
-		_, err := s.NewJSONFileDataStore[Data](invalidPath)
+		_, err := ds.NewJSONFileDataStore[Data](invalidPath)
 		if err == nil {
 			t.Fatalf("expected error when creating JSONFileDataStore with invalid path")
 		}
@@ -57,11 +57,11 @@ func TestSaveData(t *testing.T) {
 
 		badData := BadData{}
 
-		storage, err := s.NewJSONFileDataStore[BadData](tmpfile.Name())
+		storage, err := ds.NewJSONFileDataStore[BadData](tmpfile.Name())
 		assertNoError(t, err)
 
 		_, err = storage.SaveData(badData)
-		assertError(t, err, s.ErrSavingData)
+		assertError(t, err, ds.ErrSavingData)
 	})
 
 	t.Run("should handle error when closing file during SaveData", func(t *testing.T) {
@@ -71,7 +71,7 @@ func TestSaveData(t *testing.T) {
 		}
 		defer os.Remove("../data")
 
-		storage := &s.JSONFileDataStore[Data]{Filename: mockFile.Name()}
+		storage := &ds.JSONFileDataStore[Data]{Filename: mockFile.Name()}
 		output := captureOutput(func() {
 			_, _ = storage.SaveDataToFile(mockFile, sampleData)
 		})
@@ -82,12 +82,12 @@ func TestSaveData(t *testing.T) {
 	})
 }
 
-func TestLoadData(t *testing.T) {
+func TestJSONFileDataStore_LoadData(t *testing.T) {
 	t.Run("should load data", func(t *testing.T) {
 		tmpfile := mustCreateTempFileWithData(t, sampleData)
 		defer os.Remove("../data")
 
-		storage, err := s.NewJSONFileDataStore[Data](tmpfile.Name())
+		storage, err := ds.NewJSONFileDataStore[Data](tmpfile.Name())
 		assertNoError(t, err)
 
 		loadedData, err := storage.LoadData()
@@ -100,7 +100,7 @@ func TestLoadData(t *testing.T) {
 		tmpfile := mustCreateTempFileWithData(t, Data{})
 		defer os.Remove("../data")
 
-		storage, err := s.NewJSONFileDataStore[Data](tmpfile.Name())
+		storage, err := ds.NewJSONFileDataStore[Data](tmpfile.Name())
 		assertNoError(t, err)
 
 		loadedData, err := storage.LoadData()
@@ -117,17 +117,17 @@ func TestLoadData(t *testing.T) {
 			t.Fatalf("failed to write invalid JSON: %v", err)
 		}
 
-		storage, err := s.NewJSONFileDataStore[Data](tmpfile.Name())
+		storage, err := ds.NewJSONFileDataStore[Data](tmpfile.Name())
 		assertNoError(t, err)
 
 		_, err = storage.LoadData()
-		assertError(t, err, s.ErrLoadingData)
+		assertError(t, err, ds.ErrLoadingData)
 	})
 
 	t.Run("should return an error when file does not exist", func(t *testing.T) {
 		nonExistentFile := "/non/existent/file.json"
 
-		_, err := s.NewJSONFileDataStore[Data](nonExistentFile)
+		_, err := ds.NewJSONFileDataStore[Data](nonExistentFile)
 		if err == nil {
 			t.Fatalf("expected error when creating JSONFileDataStore with invalid path")
 		}
@@ -140,7 +140,7 @@ func TestLoadData(t *testing.T) {
 		}
 		defer os.Remove("../data")
 
-		storage := &s.JSONFileDataStore[Data]{Filename: mockFile.Name()}
+		storage := &ds.JSONFileDataStore[Data]{Filename: mockFile.Name()}
 		output := captureOutput(func() {
 			_, _ = storage.LoadDataFromFile(mockFile)
 		})
