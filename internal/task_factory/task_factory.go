@@ -18,8 +18,8 @@ const (
 )
 
 type Task struct {
-	Description string    `json:"description"`
 	ID          uint      `json:"id"`
+	Description string    `json:"description"`
 	Status      Status    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -27,35 +27,43 @@ type Task struct {
 
 type Tasks map[uint]Task
 
-type Timer interface {
+type TimeProvider interface {
 	Now() time.Time
 }
 
-type RealTimer struct{}
+type IDGenerator interface {
+	NextID() uint
+}
 
-func (t RealTimer) Now() time.Time {
+type TaskFactory interface {
+	NewTask(string, Status) (*Task, error)
+}
+
+type RealTimeProvider struct{}
+
+func (rtp RealTimeProvider) Now() time.Time {
 	return time.Now()
 }
 
-type IDGenerator struct{ Value uint }
+type DefaultIDGenerator struct{ Value uint }
 
-func (g *IDGenerator) NextID() uint {
-	g.Value++
-	return g.Value
+func (idg *DefaultIDGenerator) NextID() uint {
+	idg.Value++
+	return idg.Value
 }
 
-type TaskFactory struct {
-	Timer       Timer
+type DefaultTaskFactory struct {
+	Timer       TimeProvider
 	IDGenerator IDGenerator
 }
 
-func (f *TaskFactory) NewTask(description string, status Status) (*Task, error) {
+func (tf *DefaultTaskFactory) NewTask(description string, status Status) (*Task, error) {
 	task := &Task{
-		ID:          f.IDGenerator.NextID(),
+		ID:          tf.IDGenerator.NextID(),
 		Description: description,
 		Status:      status,
-		CreatedAt:   f.Timer.Now(),
-		UpdatedAt:   f.Timer.Now(),
+		CreatedAt:   tf.Timer.Now(),
+		UpdatedAt:   tf.Timer.Now(),
 	}
 
 	if err := task.Validate(); err != nil {

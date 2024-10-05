@@ -8,15 +8,17 @@ import (
 	f "github.com/alnah/task-tracker/internal/task_factory"
 )
 
-type MockTimer struct {
-	FixedTime time.Time
+func TestRealTimeProvider_Now(t *testing.T) {
+	t.Run("should return the time now", func(t *testing.T) {
+		timer := f.RealTimeProvider{}
+		if time.Now().Truncate(time.Second) != timer.Now().Truncate(time.Second) {
+			t.Errorf("expected %v, got %v", time.Now().Truncate(time.Second),
+				timer.Now().Truncate(time.Second))
+		}
+	})
 }
 
-func (t *MockTimer) Now() time.Time {
-	return t.FixedTime
-}
-
-func TestTask_Validate(t *testing.T) {
+func TestDefaultTaskFactory_Validate(t *testing.T) {
 	testCases := []struct {
 		name    string
 		task    f.Task
@@ -66,13 +68,10 @@ func TestTask_Validate(t *testing.T) {
 	}
 }
 
-func TestTaskFactory_NewTask(t *testing.T) {
-	mockTime := time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC)
-	mockTimer := &MockTimer{FixedTime: mockTime}
-	idGen := &f.IDGenerator{}
-	factory := &f.TaskFactory{
+func TestTaskGenerator_NewTask(t *testing.T) {
+	factory := &f.DefaultTaskFactory{
 		Timer:       mockTimer,
-		IDGenerator: *idGen,
+		IDGenerator: &f.DefaultIDGenerator{},
 	}
 
 	testCases := []struct {
@@ -138,8 +137,8 @@ func TestTaskFactory_NewTask(t *testing.T) {
 	}
 }
 
-func TestIDGenerator_NextID(t *testing.T) {
-	idGen := &f.IDGenerator{}
+func TestDefaultIDGenerator_NextID(t *testing.T) {
+	idGen := &f.DefaultIDGenerator{}
 	for i := 1; i <= 5; i++ {
 		id := idGen.NextID()
 		if id != uint(i) {
@@ -148,13 +147,11 @@ func TestIDGenerator_NextID(t *testing.T) {
 	}
 }
 
-func TestTaskFactory_MultipleTasks(t *testing.T) {
-	mockTime := time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC)
-	mockTimer := &MockTimer{FixedTime: mockTime}
-	idGen := &f.IDGenerator{}
-	factory := &f.TaskFactory{
+func TestDefaultTaskFactory_MultipleTasks(t *testing.T) {
+	idGen := &f.DefaultIDGenerator{}
+	factory := &f.DefaultTaskFactory{
 		Timer:       mockTimer,
-		IDGenerator: *idGen,
+		IDGenerator: idGen,
 	}
 
 	descriptions := []string{"Task 1", "Task 2", "Task 3"}
@@ -177,4 +174,15 @@ func TestTaskFactory_MultipleTasks(t *testing.T) {
 			t.Errorf("expected UpdatedAt %v, got %v", mockTime, task.UpdatedAt)
 		}
 	}
+}
+
+var mockTime = time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC)
+var mockTimer = &MockTimeProvider{FixedTime: mockTime}
+
+type MockTimeProvider struct {
+	FixedTime time.Time
+}
+
+func (t *MockTimeProvider) Now() time.Time {
+	return t.FixedTime
 }
