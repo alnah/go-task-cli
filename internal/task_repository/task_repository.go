@@ -4,40 +4,40 @@ import (
 	"errors"
 	"fmt"
 
-	f "github.com/alnah/task-tracker/internal/task_factory"
-	s "github.com/alnah/task-tracker/internal/storage"
+	ds "github.com/alnah/task-tracker/internal/data_store"
+	tf "github.com/alnah/task-tracker/internal/task_factory"
 )
 
 var ErrTaskNotFound = errors.New("task not found")
 
 type TaskRepository interface {
-	CreateTask(string) (*f.Task, error)
-	UpdateTask(UpdateTaskParams) (*f.Task, error)
-	DeleteTask(uint) (*f.Task, error)
-	ReadManyTasks(f.Status) (f.Tasks, error)
-	ReadAllTasks() (f.Tasks, error)
+	CreateTask(string) (*tf.Task, error)
+	UpdateTask(UpdateTaskParams) (*tf.Task, error)
+	DeleteTask(uint) (*tf.Task, error)
+	ReadManyTasks(tf.Status) (tf.Tasks, error)
+	ReadAllTasks() (tf.Tasks, error)
+}
+
+type JSONFileTaskRepository struct {
+	Tasks       tf.Tasks
+	TaskFactory tf.DefaultTaskFactory
+	DataStore   ds.JSONFileDataStore[tf.Tasks]
 }
 
 type UpdateTaskParams struct {
 	ID          uint
 	Description *string
-	Status      *f.Status
-}
-
-type FileTaskRepository struct {
-	Tasks       f.Tasks
-	TaskFactory f.TaskFactory
-	DataStore   s.DataStore[f.Tasks]
+	Status      *tf.Status
 }
 
 func NewFileTaskRepository(
-	factory f.TaskFactory,
-	dataStore s.DataStore[f.Tasks],
-) (*FileTaskRepository, error) {
-	repo := &FileTaskRepository{
+	factory tf.DefaultTaskFactory,
+	dataStore ds.JSONFileDataStore[tf.Tasks],
+) (*JSONFileTaskRepository, error) {
+	repo := &JSONFileTaskRepository{
 		TaskFactory: factory,
 		DataStore:   dataStore,
-		Tasks:       make(f.Tasks),
+		Tasks:       make(tf.Tasks),
 	}
 
 	if err := repo.initializeIDGenerator(); err != nil {
@@ -46,31 +46,31 @@ func NewFileTaskRepository(
 	return repo, nil
 }
 
-func (r *FileTaskRepository) CreateTask(description string) (*f.Task, error) {
+func (r *JSONFileTaskRepository) CreateTask(description string) (*tf.Task, error) {
 	if err := r.loadTasks(); err != nil {
-		return &f.Task{}, fmt.Errorf("error while creating task > %w", err)
+		return &tf.Task{}, fmt.Errorf("error while creating task > %w", err)
 	}
 
-	task, err := r.TaskFactory.NewTask(description, f.Todo)
+	task, err := r.TaskFactory.NewTask(description, tf.Todo)
 	if err != nil {
-		return &f.Task{}, fmt.Errorf("error while creating task > %w", err)
+		return &tf.Task{}, fmt.Errorf("error while creating task > %w", err)
 	}
 	r.Tasks[task.ID] = *task
 
 	if _, err = r.DataStore.SaveData(r.Tasks); err != nil {
-		return &f.Task{}, fmt.Errorf("error while creating tasks > %w", err)
+		return &tf.Task{}, fmt.Errorf("error while creating tasks > %w", err)
 	}
 	return task, nil
 }
 
-func (r *FileTaskRepository) UpdateTask(params UpdateTaskParams) (*f.Task, error) {
+func (r *JSONFileTaskRepository) UpdateTask(params UpdateTaskParams) (*tf.Task, error) {
 	if err := r.loadTasks(); err != nil {
-		return &f.Task{}, fmt.Errorf("error while updating task > %w", err)
+		return &tf.Task{}, fmt.Errorf("error while updating task > %w", err)
 	}
 
 	task, err := r.findById(params.ID)
 	if err != nil {
-		return &f.Task{}, fmt.Errorf("error while updating task > %w", err)
+		return &tf.Task{}, fmt.Errorf("error while updating task > %w", err)
 	}
 
 	if params.Description != nil {
@@ -80,37 +80,37 @@ func (r *FileTaskRepository) UpdateTask(params UpdateTaskParams) (*f.Task, error
 		task.Status = *params.Status
 	}
 
-	task.UpdatedAt = r.TaskFactory.Timer.Now()
+	task.UpdatedAt = r.TaskFactory.TimeProvider.Now()
 	r.Tasks[params.ID] = *task
 	if _, err = r.DataStore.SaveData(r.Tasks); err != nil {
-		return &f.Task{}, fmt.Errorf("error while updating task > %w", err)
+		return &tf.Task{}, fmt.Errorf("error while updating task > %w", err)
 	}
 	return task, nil
 }
 
-func (r *FileTaskRepository) DeleteTask(id uint) (*f.Task, error) {
+func (r *JSONFileTaskRepository) DeleteTask(id uint) (*tf.Task, error) {
 	if err := r.loadTasks(); err != nil {
-		return &f.Task{}, fmt.Errorf("error while deleting task > %w", err)
+		return &tf.Task{}, fmt.Errorf("error while deleting task > %w", err)
 	}
 
 	task, err := r.findById(id)
 	if err != nil {
-		return &f.Task{}, fmt.Errorf("error while deleting task > %w", err)
+		return &tf.Task{}, fmt.Errorf("error while deleting task > %w", err)
 	}
 
 	delete(r.Tasks, id)
 	if _, err = r.DataStore.SaveData(r.Tasks); err != nil {
-		return &f.Task{}, fmt.Errorf("error while deleting task > %w", err)
+		return &tf.Task{}, fmt.Errorf("error while deleting task > %w", err)
 	}
 	return task, nil
 }
 
-func (r *FileTaskRepository) ReadManyTasks(status f.Status) (f.Tasks, error) {
+func (r *JSONFileTaskRepository) ReadManyTasks(status tf.Status) (tf.Tasks, error) {
 	if err := r.loadTasks(); err != nil {
-		return f.Tasks{}, fmt.Errorf("error while reading tasks > %w", err)
+		return tf.Tasks{}, fmt.Errorf("error while reading tasks > %w", err)
 	}
 
-	filteredTasks := f.Tasks{}
+	filteredTasks := tf.Tasks{}
 	for _, task := range r.Tasks {
 		if task.Status == status {
 			filteredTasks[task.ID] = task
@@ -119,19 +119,19 @@ func (r *FileTaskRepository) ReadManyTasks(status f.Status) (f.Tasks, error) {
 	return filteredTasks, nil
 }
 
-func (r *FileTaskRepository) ReadAllTasks() (f.Tasks, error) {
+func (r *JSONFileTaskRepository) ReadAllTasks() (tf.Tasks, error) {
 	if err := r.loadTasks(); err != nil {
-		return f.Tasks{}, fmt.Errorf("error while reading all tasks > %w", err)
+		return tf.Tasks{}, fmt.Errorf("error while reading all tasks > %w", err)
 	}
 	return r.Tasks, nil
 }
 
-func (r *FileTaskRepository) initializeIDGenerator() error {
+func (r *JSONFileTaskRepository) initializeIDGenerator() error {
 	err := r.loadTasks()
 	if err != nil {
-		if errors.Is(err, s.ErrLoadingData) {
-			r.Tasks = make(f.Tasks)
-			r.TaskFactory.IDGenerator.Value = 0
+		if errors.Is(err, ds.ErrLoadingData) {
+			r.Tasks = make(tf.Tasks)
+			r.TaskFactory.IDGenerator.SetID(0)
 			return nil
 		}
 		return fmt.Errorf("error initializing ID generator > %w", err)
@@ -143,11 +143,11 @@ func (r *FileTaskRepository) initializeIDGenerator() error {
 			maxID = id
 		}
 	}
-	r.TaskFactory.IDGenerator.Value = maxID
+	r.TaskFactory.IDGenerator.SetID(maxID)
 	return nil
 }
 
-func (r *FileTaskRepository) loadTasks() error {
+func (r *JSONFileTaskRepository) loadTasks() error {
 	tasks, err := r.DataStore.LoadData()
 	if err != nil {
 		return err
@@ -156,10 +156,10 @@ func (r *FileTaskRepository) loadTasks() error {
 	return nil
 }
 
-func (r *FileTaskRepository) findById(id uint) (*f.Task, error) {
+func (r *JSONFileTaskRepository) findById(id uint) (*tf.Task, error) {
 	task, ok := r.Tasks[id]
 	if !ok {
-		return &f.Task{}, fmt.Errorf("error while finding task with ID %d > %w",
+		return &tf.Task{}, fmt.Errorf("error while finding task with ID %d > %w",
 			id, ErrTaskNotFound)
 	}
 	return &task, nil
