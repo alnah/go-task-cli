@@ -13,8 +13,8 @@ func main() {
 
 	dataStore, err := ds.NewJSONFileDataStore[tf.Tasks]("tasks")
 	taskFactory := tf.DefaultTaskFactory{
-		Timer:       &tf.DefaultTimeProvider{},
-		IDGenerator: &tf.DefaultIDGenerator{},
+		TimeProvider: &tf.DefaultTimeProvider{},
+		IDGenerator:  &tf.DefaultIDGenerator{},
 	}
 	if err != nil {
 		log.Fatal(err)
