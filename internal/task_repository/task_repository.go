@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	s "github.com/alnah/task-tracker/internal/storage"
 	f "github.com/alnah/task-tracker/internal/task_factory"
+	s "github.com/alnah/task-tracker/internal/storage"
 )
 
 var ErrTaskNotFound = errors.New("task not found")
