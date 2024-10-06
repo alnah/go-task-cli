@@ -80,7 +80,7 @@ func TestJSONFileStore_InitFile_Happy(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			fs := JSONFileStore[any, any]{
+			fs := JSONFileStore{
 				DestDir:  t.TempDir(),
 				Filename: fmt.Sprintf("test_%s.json", tc.name),
 				InitData: tc.initData,
@@ -123,11 +123,11 @@ func TestJSONFileStore_InitFile_Happy(t *testing.T) {
 func TestJSONFileStore_InitFile_Sad_Edge(t *testing.T) {
 	testCases := []struct {
 		name string
-		fs   JSONFileStore[any, any]
+		fs   JSONFileStore
 	}{
 		{
 			"returns a StoreError for a bad InitDataStruct",
-			JSONFileStore[any, any]{
+			JSONFileStore{
 				DestDir:  t.TempDir(),
 				Filename: "bad_init_data_struct.json",
 				InitData: "incorrect",
@@ -135,7 +135,7 @@ func TestJSONFileStore_InitFile_Sad_Edge(t *testing.T) {
 		},
 		{
 			"returns a StoreError for a bad Filename",
-			JSONFileStore[any, any]{
+			JSONFileStore{
 				DestDir:  t.TempDir(),
 				Filename: "bad_filename.incorrect",
 				InitData: "{}",
@@ -143,7 +143,7 @@ func TestJSONFileStore_InitFile_Sad_Edge(t *testing.T) {
 		},
 		{
 			"returns a StoreError when DestDir creation fails",
-			JSONFileStore[any, any]{
+			JSONFileStore{
 				DestDir:  strings.Repeat("a", 1000), // too long
 				Filename: "dest_dir_creation_fails.json",
 				InitData: "{}",
@@ -151,7 +151,7 @@ func TestJSONFileStore_InitFile_Sad_Edge(t *testing.T) {
 		},
 		{
 			"returns a StoreError when File creation fails",
-			JSONFileStore[any, any]{
+			JSONFileStore{
 				DestDir:  t.TempDir(),
 				Filename: fmt.Sprintf("%s.json", strings.Repeat("a", 1000)), // too long
 				InitData: "{}",
@@ -159,7 +159,7 @@ func TestJSONFileStore_InitFile_Sad_Edge(t *testing.T) {
 		},
 		{
 			"returns a StoreError for an empty DestDir",
-			JSONFileStore[any, any]{
+			JSONFileStore{
 				DestDir:  "",
 				Filename: "empty_dir.json",
 				InitData: "{}",
@@ -167,7 +167,7 @@ func TestJSONFileStore_InitFile_Sad_Edge(t *testing.T) {
 		},
 		{
 			"returns a StoreError for an empty Filename",
-			JSONFileStore[any, any]{
+			JSONFileStore{
 				DestDir:  t.TempDir(),
 				Filename: "",
 				InitData: "{}",
@@ -175,7 +175,7 @@ func TestJSONFileStore_InitFile_Sad_Edge(t *testing.T) {
 		},
 		{
 			"returns a StoreError for an empty InitData",
-			JSONFileStore[any, any]{
+			JSONFileStore{
 				DestDir:  t.TempDir(),
 				Filename: "empty_init_data.json",
 				InitData: "",
@@ -355,7 +355,7 @@ func TestJSONFileStore_Happy_closeFile(t *testing.T) {
 func TestJSONFileStore_Sad_closeFile(t *testing.T) {
 	tempDir := t.TempDir()
 	filename := "test_already_closed.json"
-	fs := JSONFileStore[any, any]{
+	fs := JSONFileStore{
 		DestDir:  tempDir,
 		Filename: filename,
 		InitData: "{}",
@@ -471,8 +471,8 @@ func assertStoreError(t testing.TB, err error) {
 	}
 }
 
-func setupJSONFileStore(t *testing.T, f string) (*JSONFileStore[any, any], string) {
-	fs := &JSONFileStore[any, any]{
+func setupJSONFileStore(t *testing.T, f string) (*JSONFileStore, string) {
+	fs := &JSONFileStore{
 		DestDir:  t.TempDir(),
 		Filename: f,
 		InitData: "{}",
