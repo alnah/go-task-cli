@@ -1,49 +1,31 @@
 package store
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
 func TestJSONFileDataStore_Happy_CloseFile(t *testing.T) {
-	testCases := []struct {
-		name     string
-		initData JSONInitData
-	}{
-		{"closes a JSON file initialized with an empty array", "[]"},
-		{"closes a JSON file initialized with an empty object", "{}"},
-	}
+	t.Run("successfully closes a file", func(t *testing.T) {
+		fs, filepath := setupJSONFileStore(t, "test_close_success.json")
+		t.Cleanup(func() { os.Remove(filepath) })
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			filename := fmt.Sprintf("test_%s.json", strings.ReplaceAll(tc.name, " ", "_"))
-			fs := JSONFileStore[any]{
-				DestDir:  t.TempDir(),
-				Filename: filename,
-				InitData: tc.initData,
-			}
-			filepath := filepath.Join(fs.DestDir, fs.Filename)
-			t.Cleanup(func() { os.Remove(filepath) })
+		file, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE, 0644)
+		if err != nil {
+			t.Fatalf("file creation failed: %v", err)
+		}
 
-			file, err := fs.Init()
-			if err != nil {
-				t.Fatalf("Init failed: %v", err)
-			}
+		err = fs.closeFile(file)
+		if err != nil {
+			t.Fatalf("closeFile failed: %v", err)
+		}
 
-			err = fs.CloseFile(file)
-			if err != nil {
-				t.Fatalf("CloseFile failed: %v", err)
-			}
-
-			_, err = file.WriteString("attempt to write to a closed file")
-			if err == nil {
-				t.Errorf("want an error, but didn't got one, because it's closed!")
-			}
-		})
-	}
+		_, err = file.WriteString("attempt to write to a closed file")
+		if err == nil {
+			t.Errorf("want an error, but didn't got one")
+		}
+	})
 }
 
 func TestJSONFileDataStore_Sad_CloseFile(t *testing.T) {
@@ -57,18 +39,16 @@ func TestJSONFileDataStore_Sad_CloseFile(t *testing.T) {
 	filepath := filepath.Join(fs.DestDir, fs.Filename)
 	t.Cleanup(func() { os.Remove(filepath) })
 
-	file, err := fs.Init()
+	file, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		t.Fatalf("Init failed: %v", err)
+		t.Fatalf("File creation failed: %v", err)
 	}
 
-	// close the file before...
-	err = file.Close()
+	err = file.Close() // close manually the file
 	if err != nil {
 		t.Fatalf("manual Close failed: %v", err)
 	}
 
-	// ...closing it with the CloseFile method to trigger an error
-	err = fs.CloseFile(file)
+	err = fs.closeFile(file) // error because it has been already closed
 	assertStoreError(t, err)
 }

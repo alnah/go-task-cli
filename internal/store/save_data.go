@@ -10,7 +10,7 @@ func (fs *JSONFileStore[T]) SaveData(data T, filepath string) error {
 	if err != nil {
 		return err
 	}
-	defer fs.CloseFile(file)
+	defer fs.closeFile(file)
 
 	bytes, err := fs.marshall(data)
 	if err != nil {

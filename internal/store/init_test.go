@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestJSONFileStore_Init_Happy(t *testing.T) {
+func TestJSONFileStore_InitFile_Happy(t *testing.T) {
 	testCases := []struct {
 		name     string
 		initData JSONInitData
@@ -29,11 +29,11 @@ func TestJSONFileStore_Init_Happy(t *testing.T) {
 			filepath := filepath.Join(fs.DestDir, fs.Filename)
 			t.Cleanup(func() { os.Remove(filepath) })
 
-			_, err := fs.Init()
+			_, err := fs.InitFile()
 			assertNoError(t, err)
 
 			if _, err := os.Stat(filepath); os.IsNotExist(err) {
-				t.Errorf("expected file to exist, but it does not")
+				t.Errorf("got nothing, but want a file")
 			}
 
 			content, err := os.ReadFile(filepath)
@@ -61,7 +61,7 @@ func TestJSONFileStore_Init_Happy(t *testing.T) {
 	}
 }
 
-func TestJSONFileStore_Init_Sad(t *testing.T) {
+func TestJSONFileStore_InitFile_Sad(t *testing.T) {
 	testCases := []struct {
 		name string
 		fs   JSONFileStore[any]
@@ -102,7 +102,7 @@ func TestJSONFileStore_Init_Sad(t *testing.T) {
 	runTestCases(t, testCases)
 }
 
-func TestJSONFileStore_Init_Edge(t *testing.T) {
+func TestJSONFileStore_InitFile_Edge(t *testing.T) {
 	testCases := []struct {
 		name string
 		fs   JSONFileStore[any]
@@ -146,7 +146,7 @@ func runTestCases(t *testing.T, testCases []struct {
 			filepath := filepath.Join(tc.fs.DestDir, tc.fs.Filename)
 			t.Cleanup(func() { os.Remove(filepath) })
 
-			_, err := tc.fs.Init()
+			_, err := tc.fs.InitFile()
 			assertStoreError(t, err)
 		})
 	}

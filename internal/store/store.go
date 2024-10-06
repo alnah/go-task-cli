@@ -8,7 +8,6 @@ type Store[T any] interface {
 	Init() (*os.File, error)
 	LoadData(string) (T, error)
 	SaveData(T, string) error
-	CloseFile(*os.File) error
 }
 
 type JSONInitData string

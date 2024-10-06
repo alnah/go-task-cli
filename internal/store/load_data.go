@@ -13,7 +13,7 @@ func (fs *JSONFileStore[T]) LoadData(filepath string) (T, error) {
 	if err != nil {
 		return zero, err
 	}
-	defer fs.CloseFile(file)
+	defer fs.closeFile(file)
 
 	bytes, err := fs.readFileContent(file)
 	if err != nil {

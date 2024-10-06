@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 )
 
-func (fs *JSONFileStore[T]) Init() (*os.File, error) {
+func (fs *JSONFileStore[T]) InitFile() (*os.File, error) {
 	if err := fs.validateDataStructure(); err != nil {
 		return nil, err
 	}
@@ -19,6 +19,7 @@ func (fs *JSONFileStore[T]) Init() (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer fs.closeFile(file)
 	return file, nil
 }
 
