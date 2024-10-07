@@ -2,16 +2,17 @@ package store
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 )
 
-type Store interface {
+type Store[T any] interface {
 	InitFile() (*os.File, error)
-	LoadData(string) (any, error)
-	SaveData(any, string) error
+	LoadData(string) (T, error)
+	SaveData(T, string) error
 }
 
 type JSONInitData string
@@ -21,39 +22,29 @@ const (
 	EmptyObject JSONInitData = "{}"
 )
 
-type JSONFileStore struct {
+type JSONFileStore[T any] struct {
 	DestDir  string
 	Filename string
 	InitData JSONInitData
 }
 
-const (
-	errorHead      = "Error: "
-	errorTail      = "please provide more details"
-	emptyOperation = "operation is empty, "
-	emptyMessage   = "message is empty, "
-	emptyBoth      = "both operation and message are empty, "
-)
+var BadInitDataStruct = errors.New("InitDataStruct must be either '[]' or '{}'")
+var BadFilenameExtension = errors.New("Filename must have a '.json' extension")
 
 type StoreError struct {
 	Operation string
-	Message   string
+	Err       error
 }
 
 func (e *StoreError) Error() string {
-	switch {
-	case e.Operation == "" && e.Message == "":
-		return errorHead + emptyBoth + errorTail
-	case e.Operation == "":
-		return errorHead + emptyOperation + errorTail
-	case e.Message == "":
-		return errorHead + emptyMessage + errorTail
-	}
-
-	return fmt.Sprintf("Error while %s: %s", e.Operation, e.Message)
+	return fmt.Sprintf("Store Error while %s\n>\t%s", e.Operation, e.Err)
 }
 
-func (fs *JSONFileStore) InitFile() (*os.File, error) {
+func (e *StoreError) Unwrap() error {
+	return e.Err
+}
+
+func (fs *JSONFileStore[T]) InitFile() (*os.File, error) {
 	if err := fs.validateDataStructure(); err != nil {
 		return nil, err
 	}
@@ -71,7 +62,7 @@ func (fs *JSONFileStore) InitFile() (*os.File, error) {
 	return file, nil
 }
 
-func (fs *JSONFileStore) LoadData(filepath string) (any, error) {
+func (fs *JSONFileStore[T]) LoadData(filepath string) (any, error) {
 	var zero any
 
 	file, err := fs.openFile(filepath, os.O_RDONLY)
@@ -93,7 +84,7 @@ func (fs *JSONFileStore) LoadData(filepath string) (any, error) {
 	return data, nil
 }
 
-func (fs *JSONFileStore) SaveData(data any, filepath string) error {
+func (fs *JSONFileStore[T]) SaveData(data any, filepath string) error {
 	file, err := fs.openFile(filepath, os.O_WRONLY|os.O_TRUNC)
 	if err != nil {
 		return err
@@ -112,50 +103,50 @@ func (fs *JSONFileStore) SaveData(data any, filepath string) error {
 	return nil
 }
 
-func (fs *JSONFileStore) validateDataStructure() error {
+func (fs *JSONFileStore[T]) validateDataStructure() error {
 	if fs.InitData != EmptyArray && fs.InitData != EmptyObject {
 		return &StoreError{
 			Operation: "validating data structure",
-			Message:   "InitDataStruct must be either '[]' or '{}'",
+			Err:       BadInitDataStruct,
 		}
 	}
 	return nil
 }
 
-func (fs *JSONFileStore) validateFilename() error {
+func (fs *JSONFileStore[T]) validateFilename() error {
 	if filepath.Ext(fs.Filename) != ".json" {
 		return &StoreError{
 			Operation: "validating filename",
-			Message:   "Filename must have a '.json' extension",
+			Err:       BadFilenameExtension,
 		}
 	}
 	return nil
 }
 
-func (fs *JSONFileStore) createDestDir() error {
+func (fs *JSONFileStore[T]) createDestDir() error {
 	if err := os.MkdirAll(fs.DestDir, 0644); err != nil {
 		return &StoreError{
 			Operation: "creating destination directory",
-			Message:   err.Error(),
+			Err:       err,
 		}
 	}
 	return nil
 }
 
-func (fs *JSONFileStore) createFile() (*os.File, error) {
+func (fs *JSONFileStore[T]) createFile() (*os.File, error) {
 	filepath := filepath.Join(fs.DestDir, fs.Filename)
 	file, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, &StoreError{
 			Operation: "creating file",
-			Message:   err.Error(),
+			Err:       err,
 		}
 	}
 	file.WriteString(string(fs.InitData))
 	return file, nil
 }
 
-func (fs *JSONFileStore) openFile(filepath string, mode int) (*os.File, error) {
+func (fs *JSONFileStore[T]) openFile(filepath string, mode int) (*os.File, error) {
 	file, err := os.OpenFile(filepath, mode, 0644)
 
 	if err != nil {
@@ -169,14 +160,14 @@ func (fs *JSONFileStore) openFile(filepath string, mode int) (*os.File, error) {
 
 		return nil, &StoreError{
 			Operation: operation,
-			Message:   err.Error(),
+			Err:       err.(),
 		}
 	}
 
 	return file, nil
 }
 
-func (fs *JSONFileStore) closeFile(file *os.File) error {
+func (fs *JSONFileStore[T]) closeFile(file *os.File) error {
 	if err := file.Close(); err != nil {
 		return &StoreError{
 			Operation: "closing file",
@@ -186,7 +177,7 @@ func (fs *JSONFileStore) closeFile(file *os.File) error {
 	return nil
 }
 
-func (fs *JSONFileStore) marshall(data any) ([]byte, error) {
+func (fs *JSONFileStore[T]) marshall(data any) ([]byte, error) {
 	bytes, err := json.Marshal(data)
 
 	if err != nil {
@@ -199,7 +190,7 @@ func (fs *JSONFileStore) marshall(data any) ([]byte, error) {
 	return bytes, nil
 }
 
-func (fs *JSONFileStore) unmarshall(bytes []byte) (any, error) {
+func (fs *JSONFileStore[T]) unmarshall(bytes []byte) (any, error) {
 	var data any
 
 	if err := json.Unmarshal(bytes, &data); err != nil {
@@ -213,7 +204,7 @@ func (fs *JSONFileStore) unmarshall(bytes []byte) (any, error) {
 	return data, nil
 }
 
-func (fs *JSONFileStore) readFileContent(file *os.File) ([]byte, error) {
+func (fs *JSONFileStore[T]) readFileContent(file *os.File) ([]byte, error) {
 	bytes, err := io.ReadAll(file)
 
 	if err != nil {
@@ -226,7 +217,7 @@ func (fs *JSONFileStore) readFileContent(file *os.File) ([]byte, error) {
 	return bytes, nil
 }
 
-func (fs *JSONFileStore) writeFileContent(file *os.File, bytes []byte) error {
+func (fs *JSONFileStore[T]) writeFileContent(file *os.File, bytes []byte) error {
 	if _, err := file.Write(bytes); err != nil {
 		return &StoreError{
 			Operation: "writing to file",
@@ -237,4 +228,4 @@ func (fs *JSONFileStore) writeFileContent(file *os.File, bytes []byte) error {
 	return nil
 }
 
-var _ Store = (*JSONFileStore)(nil)
+var _ Store[any] = (*JSONFileStore[any])(nil)
