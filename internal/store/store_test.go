@@ -16,13 +16,13 @@ import (
 func Test_InitDataError(t *testing.T) {
 	err := &InitDataError{InitData: "{}"}
 	errMsg := err.Error()
-	AssertErrorMessage(t, err, errMsg, string(err.InitData))
+	sh.AssertErrorMessage(t, err, errMsg, string(err.InitData))
 }
 
 func Test_FilenameExtError(t *testing.T) {
 	err := &FilenameExtErr{Filename: "test.json"}
 	errMsg := err.Error()
-	AssertErrorMessage(t, err, errMsg, string(err.Filename))
+	sh.AssertErrorMessage(t, err, errMsg, string(err.Filename))
 }
 
 func Test_JSONFileStore_InitFile_Happy(t *testing.T) {
@@ -155,7 +155,7 @@ func Test_JSONFileStore_InitFile_Sad_Edge(t *testing.T) {
 			t.Cleanup(func() { os.Remove(filepath) })
 
 			_, err := tc.fs.InitFile()
-			AssertError(t, err, tc.errType)
+			assertError(t, err, tc.errType)
 		})
 	}
 }
@@ -243,7 +243,7 @@ func Test_JSONFileStore_SaveData_Sad_Edge(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			fs, filepath := setupJSONFileStore(t, tc.filename)
 			err := fs.SaveData(tc.data, filepath)
-			AssertError(t, err, tc.errType)
+			assertError(t, err, tc.errType)
 		})
 	}
 }
@@ -285,7 +285,7 @@ func Test_JSONFileStore_LoadData_Sad(t *testing.T) {
 	t.Run("returns an os.PathError if the file doesn't exist", func(t *testing.T) {
 		fs, filepath := setupJSONFileStore(t, "test_not_exist.json")
 		got, err := fs.LoadData(filepath)
-		AssertError(t, err, &os.PathError{})
+		assertError(t, err, &os.PathError{})
 		sh.AssertNil(t, got)
 	})
 
@@ -296,7 +296,7 @@ func Test_JSONFileStore_LoadData_Sad(t *testing.T) {
 		sh.AssertNoError(t, err)
 
 		got, err := fs.LoadData(filepath)
-		AssertError(t, err, &json.SyntaxError{})
+		assertError(t, err, &json.SyntaxError{})
 		sh.AssertNil(t, got)
 	})
 }
@@ -306,7 +306,7 @@ func Test_JSONFileStore_LoadData_Edge(t *testing.T) {
 		func(t *testing.T) {
 			fs, emptyFilepath := setupJSONFileStore(t, "")
 			got, err := fs.LoadData(emptyFilepath)
-			AssertError(t, err, &os.PathError{})
+			assertError(t, err, &os.PathError{})
 			sh.AssertNil(t, got)
 		})
 }
@@ -355,7 +355,7 @@ func Test_JSONFileStore_Sad_closeFile(t *testing.T) {
 	}
 
 	err = fs.closeFile(file) // error because it has been already closed
-	AssertError(t, err, &os.PathError{})
+	assertError(t, err, &os.PathError{})
 }
 
 const (
@@ -425,20 +425,20 @@ const (
 	}`
 )
 
-func AssertErrorMessage(t testing.TB, err error, got, want string) {
-	t.Helper()
-	if !strings.Contains(got, want) {
-		t.Errorf("got %s, want a message containing %s", got, want)
+func setupJSONFileStore(t *testing.T, f string) (*JSONFileStore[any], string) {
+	fs := &JSONFileStore[any]{
+		DestDir:  t.TempDir(),
+		Filename: f,
+		InitData: "{}",
 	}
+	filepath := filepath.Join(fs.DestDir, fs.Filename)
+	t.Cleanup(func() { os.Remove(filepath) })
+	return fs, filepath
 }
 
-func AssertError(t testing.TB, err error, expectedType error) {
+func assertError(t testing.TB, err error, expectedType error) {
 	t.Helper()
-
-	if err == nil {
-		t.Errorf("expected an error, but got nil")
-		return
-	}
+	sh.AssertNotNil(t, err)
 
 	switch expectedType.(type) {
 	// Custom Errors
@@ -468,17 +468,6 @@ func AssertError(t testing.TB, err error, expectedType error) {
 		}
 
 	default:
-		t.Errorf("got unexpected error type: %T", err)
+		t.Fatalf("got unexpected error type: %T", err)
 	}
-}
-
-func setupJSONFileStore(t *testing.T, f string) (*JSONFileStore[any], string) {
-	fs := &JSONFileStore[any]{
-		DestDir:  t.TempDir(),
-		Filename: f,
-		InitData: "{}",
-	}
-	filepath := filepath.Join(fs.DestDir, fs.Filename)
-	t.Cleanup(func() { os.Remove(filepath) })
-	return fs, filepath
 }
