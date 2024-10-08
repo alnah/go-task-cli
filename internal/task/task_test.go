@@ -26,21 +26,22 @@ func Test_DescriptionError_Error(t *testing.T) {
 }
 
 func Test_RealTimeProvider_Now(t *testing.T) {
-	t.Run("returns the current time within a tolerance", func(t *testing.T) {
-		timeProvider := tk.RealTimeProvider{}
+	t.Run("returns the current time within a tolerance successfully",
+		func(t *testing.T) {
+			timeProvider := tk.RealTimeProvider{}
 
-		got := timeProvider.Now()
-		want := time.Now()
+			got := timeProvider.Now()
+			want := time.Now()
 
-		tolerance := 100 * time.Millisecond
-		if got.Sub(want) > tolerance || want.Sub(got) > tolerance {
-			t.Errorf("got %v, want %v", got, want)
-		}
-	})
+			tolerance := 100 * time.Millisecond
+			if got.Sub(want) > tolerance || want.Sub(got) > tolerance {
+				t.Errorf("got %v, want %v", got, want)
+			}
+		})
 }
 
 func Test_TaskIDGenerator_Init(t *testing.T) {
-	t.Run("initializes ID generator", func(t *testing.T) {
+	t.Run("initializes the ID generator successfully", func(t *testing.T) {
 		testTasks := th.NewTestTasks()
 		testCases := []struct {
 			name  string
@@ -48,7 +49,7 @@ func Test_TaskIDGenerator_Init(t *testing.T) {
 			want  uint
 		}{
 			{
-				name:  "happy: initializes with highest existing task ID",
+				name:  "happy: initializes with the highest existing task ID",
 				tasks: tk.Tasks{1: testTasks[1], 2: testTasks[2], 5: testTasks[3]},
 				want:  5,
 			},
@@ -80,7 +81,7 @@ func Test_TaskIDGenerator_Init(t *testing.T) {
 }
 
 func Test_TaskIDGenerator_NextID(t *testing.T) {
-	t.Run("generates next ID correctly", func(t *testing.T) {
+	t.Run("generates the next ID correctly", func(t *testing.T) {
 		testTasks := th.NewTestTasks()
 		testCases := []struct {
 			name  string
@@ -88,17 +89,17 @@ func Test_TaskIDGenerator_NextID(t *testing.T) {
 			want  uint
 		}{
 			{
-				name:  "happy: generates next ID correctly",
+				name:  "happy: generates the next ID correctly",
 				tasks: tk.Tasks{1: testTasks[1], 4: testTasks[4], 5: testTasks[5]},
 				want:  6,
 			},
 			{
-				name:  "sad: generates next ID with no tasks",
+				name:  "sad: generates the next ID with no tasks",
 				tasks: tk.Tasks{},
 				want:  1,
 			},
 			{
-				name:  "edge: generates next ID with empty individual tasks",
+				name:  "edge: generates the next ID with empty individual tasks",
 				tasks: tk.Tasks{1: tk.Task{}, 2: tk.Task{}, 3: tk.Task{}},
 				want:  4,
 			},
@@ -122,7 +123,7 @@ func Test_TaskIDGenerator_NextID(t *testing.T) {
 }
 
 func Test_JSONFileTaskRepository_CreateTask_Happy(t *testing.T) {
-	t.Run("returns a task", func(t *testing.T) {
+	t.Run("returns a task successfully", func(t *testing.T) {
 		_, taskRepo, file := setupTaskUnitTest(t)
 
 		wantTask := th.NewTestTask(1, "test_task_1", tk.Todo)
@@ -132,7 +133,8 @@ func Test_JSONFileTaskRepository_CreateTask_Happy(t *testing.T) {
 		th.AssertDeepEqual(t, gotTask, wantTask)
 	})
 
-	t.Run("calls Store.LoadData, Store.SaveData for each task created",
+	t.Run("calls Store.LoadData and Store.SaveData for each task created "+
+		"successfully",
 		func(t *testing.T) {
 			mockFs, taskRepo, file := setupTaskUnitTest(t)
 
@@ -157,7 +159,7 @@ func Test_JSONFileTaskRepository_CreateTask_Happy(t *testing.T) {
 }
 
 func Test_JSONFileTaskRepository_CreateTask_Sad_Edge(t *testing.T) {
-	t.Run("returns an error", func(t *testing.T) {
+	t.Run("returns an error successfully", func(t *testing.T) {
 		testCases := []struct {
 			name      string
 			loadError error
@@ -183,7 +185,8 @@ func Test_JSONFileTaskRepository_CreateTask_Sad_Edge(t *testing.T) {
 				desc:      "",
 			},
 			{
-				name:      "returns a DescriptionError for a desc > 300 characters",
+				name: "returns a DescriptionError for a description exceeding " +
+					"300 characters",
 				loadError: nil,
 				saveError: nil,
 				desc:      strings.Repeat("a", 301),
@@ -192,6 +195,7 @@ func Test_JSONFileTaskRepository_CreateTask_Sad_Edge(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 				mockFs, taskRepo, file := setupTaskUnitTest(t)
 				mockFs.LoadError = tc.loadError
 				mockFs.SaveError = tc.saveError
@@ -201,7 +205,7 @@ func Test_JSONFileTaskRepository_CreateTask_Sad_Edge(t *testing.T) {
 				switch {
 				case tc.loadError != nil || tc.saveError != nil:
 					th.AssertError(t, err, &os.PathError{})
-				case len(tc.desc) == 00 || len(tc.desc) > 300:
+				case len(tc.desc) == 0 || len(tc.desc) > 300:
 					th.AssertError(t, err, &tk.DescriptionError{})
 				}
 			})
@@ -210,7 +214,7 @@ func Test_JSONFileTaskRepository_CreateTask_Sad_Edge(t *testing.T) {
 }
 
 func Test_JSONFileTaskRepository_UpdateTask_Happy(t *testing.T) {
-	t.Run("returns an updated task", func(t *testing.T) {
+	t.Run("returns an updated task successfully", func(t *testing.T) {
 		updateDescription := "update_test"
 		updateStatus := tk.InProgress
 		testCases := []struct {
@@ -221,21 +225,21 @@ func Test_JSONFileTaskRepository_UpdateTask_Happy(t *testing.T) {
 			want   tk.Task
 		}{
 			{
-				name:   "returns a task with updated description",
+				name:   "returns a task with an updated description",
 				id:     1,
 				desc:   &updateDescription,
 				status: nil,
 				want:   th.NewTestTask(1, updateDescription, tk.Todo),
 			},
 			{
-				name:   "returns a task with updated status",
+				name:   "returns a task with an updated status",
 				id:     2,
 				desc:   nil,
 				status: &updateStatus,
 				want:   th.NewTestTask(2, "test_task_2", updateStatus),
 			},
 			{
-				name:   "returns a task with updated description and status",
+				name:   "returns a task with an updated description and status",
 				id:     3,
 				desc:   &updateDescription,
 				status: &updateStatus,
@@ -260,29 +264,31 @@ func Test_JSONFileTaskRepository_UpdateTask_Happy(t *testing.T) {
 		}
 	})
 
-	t.Run("calls Store.LoadData and Store.SaveData for each task updated", func(t *testing.T) {
-		mockFs, taskRepo, file := setupTaskUnitTest(t)
+	t.Run("calls Store.LoadData and Store.SaveData for each task updated "+
+		"successfully",
+		func(t *testing.T) {
+			mockFs, taskRepo, file := setupTaskUnitTest(t)
 
-		for _, task := range mockFs.Tasks {
-			updateDescription := "updated_task"
-			_, err := taskRepo.UpdateTask(file.Name(), tk.UpdateTaskParams{
-				ID:          task.ID,
-				Description: &updateDescription,
-			})
-			th.AssertNoError(t, err)
-		}
+			for _, task := range mockFs.Tasks {
+				updateDescription := "updated_task"
+				_, err := taskRepo.UpdateTask(file.Name(), tk.UpdateTaskParams{
+					ID:          task.ID,
+					Description: &updateDescription,
+				})
+				th.AssertNoError(t, err)
+			}
 
-		wantCalls := make(Calls, 0)
-		for range mockFs.Tasks {
-			wantCalls = append(wantCalls, LoadData, SaveData)
-		}
+			wantCalls := make(Calls, 0)
+			for range mockFs.Tasks {
+				wantCalls = append(wantCalls, LoadData, SaveData)
+			}
 
-		th.AssertDeepEqual(t, wantCalls, mockFs.Calls)
-	})
+			th.AssertDeepEqual(t, wantCalls, mockFs.Calls)
+		})
 }
 
 func Test_JSONFileTaskRepository_UpdateTask_Sad_Edge(t *testing.T) {
-	t.Run("returns an error", func(t *testing.T) {
+	t.Run("returns an error successfully", func(t *testing.T) {
 		updateDescription := "updated_task_1"
 		emptyDescription := ""
 		tooLongDescription := strings.Repeat("a", 301)
@@ -315,14 +321,15 @@ func Test_JSONFileTaskRepository_UpdateTask_Sad_Edge(t *testing.T) {
 				description: &emptyDescription,
 			},
 			{
-				name:        "returns a DescriptionError for a desc > 300 characters",
+				name: "returns a DescriptionError for a description exceeding " +
+					"300 characters",
 				loadError:   nil,
 				saveError:   nil,
 				id:          1,
 				description: &tooLongDescription,
 			},
 			{
-				name:        "returns a TaskNotFoundError when ID is out of range",
+				name:        "returns a TaskNotFoundError when the ID is out of range",
 				loadError:   nil,
 				saveError:   nil,
 				id:          0,
@@ -332,6 +339,8 @@ func Test_JSONFileTaskRepository_UpdateTask_Sad_Edge(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
 				mockFs, taskRepo, file := setupTaskUnitTest(t)
 				mockFs.LoadError = tc.loadError
 				mockFs.SaveError = tc.saveError
@@ -344,7 +353,7 @@ func Test_JSONFileTaskRepository_UpdateTask_Sad_Edge(t *testing.T) {
 				switch {
 				case tc.loadError != nil || tc.saveError != nil:
 					th.AssertError(t, err, &os.PathError{})
-				case len(*tc.description) == 00 || len(*tc.description) > 300:
+				case len(*tc.description) == 0 || len(*tc.description) > 300:
 					th.AssertError(t, err, &tk.DescriptionError{})
 				case tc.id == 0:
 					th.AssertError(t, err, &tk.TaskNotFoundError{})
@@ -353,8 +362,8 @@ func Test_JSONFileTaskRepository_UpdateTask_Sad_Edge(t *testing.T) {
 		}
 	})
 
-	t.Run("returns the original task when no updates are provided "+
-		"and calls store.LoadData for each task, but doesn't call store.SaveData",
+	t.Run("returns the original task when no updates are provided and "+
+		"calls store.LoadData without calling store.SaveData",
 		func(t *testing.T) {
 			mockFs, taskRepo, file := setupTaskUnitTest(t)
 			for _, task := range mockFs.Tasks {
@@ -381,14 +390,15 @@ func Test_JSONFileTaskRepository_ReadAllTasks_Happy(t *testing.T) {
 		th.AssertDeepEqual(t, tasks, mockFs.Tasks)
 	})
 
-	t.Run("calls store.LoadData once to read all tasks", func(t *testing.T) {
-		mockFs, taskRepo, file := setupTaskUnitTest(t)
-		_, err := taskRepo.ReadAllTasks(file.Name())
-		th.AssertNoError(t, err)
+	t.Run("calls store.LoadData once to read all tasks successfully",
+		func(t *testing.T) {
+			mockFs, taskRepo, file := setupTaskUnitTest(t)
+			_, err := taskRepo.ReadAllTasks(file.Name())
+			th.AssertNoError(t, err)
 
-		wantCalls := Calls{LoadData}
-		th.AssertDeepEqual(t, wantCalls, mockFs.Calls)
-	})
+			wantCalls := Calls{LoadData}
+			th.AssertDeepEqual(t, wantCalls, mockFs.Calls)
+		})
 }
 
 func Test_JSONFileTaskRepository_ReadAllTasks_Sad(t *testing.T) {
@@ -410,7 +420,7 @@ func Test_JSONFileTaskRepository_ReadManyTasks_Happy(t *testing.T) {
 		6: th.NewTestTask(6, "test_task_6", tk.Done),
 	}
 
-	t.Run("returns filtered tasks by status", func(t *testing.T) {
+	t.Run("returns filtered tasks by status successfully", func(t *testing.T) {
 		mockFs, taskRepo, file := setupTaskUnitTest(t)
 		mockFs.Tasks = tasksForTest
 
@@ -445,7 +455,7 @@ func Test_JSONFileTaskRepository_ReadManyTasks_Happy(t *testing.T) {
 		}
 	})
 
-	t.Run("calls store.LoadData once", func(t *testing.T) {
+	t.Run("calls store.LoadData once successfully", func(t *testing.T) {
 		mockFs, taskRepo, file := setupTaskUnitTest(t)
 		mockFs.Tasks = tasksForTest
 
@@ -458,17 +468,19 @@ func Test_JSONFileTaskRepository_ReadManyTasks_Happy(t *testing.T) {
 }
 
 func Test_JSONFileTaskRepository_ReadManyTasks_Sad(t *testing.T) {
-	t.Run("returns an error context when loading fails", func(t *testing.T) {
-		mockFs, taskRepo, file := setupTaskUnitTest(t)
-		mockFs.LoadError = &os.PathError{}
+	t.Run("returns an error context when loading fails successfully",
+		func(t *testing.T) {
+			mockFs, taskRepo, file := setupTaskUnitTest(t)
+			mockFs.LoadError = &os.PathError{}
 
-		_, err := taskRepo.ReadManyTasks(file.Name(), tk.Todo)
-		th.AssertError(t, err, mockFs.LoadError)
-	})
+			_, err := taskRepo.ReadManyTasks(file.Name(), tk.Todo)
+			th.AssertError(t, err, mockFs.LoadError)
+		})
 }
 
 func Test_JSONFileTaskRepository_ReadManyTasks_Edge(t *testing.T) {
-	t.Run("returns an empty task list when no tasks match the specified status",
+	t.Run("returns an empty task list when no tasks match the specified status "+
+		"successfully",
 		func(t *testing.T) {
 			_, taskRepo, file := setupTaskUnitTest(t) // all tasks are marked as todo
 			gotTasks, err := taskRepo.ReadManyTasks(file.Name(), tk.Done)
@@ -478,40 +490,42 @@ func Test_JSONFileTaskRepository_ReadManyTasks_Edge(t *testing.T) {
 }
 
 func Test_JSONFileTaskRepository_DeleteTask_Happy(t *testing.T) {
-	t.Run("delete the specified task from the task list", func(t *testing.T) {
-		mockFs, taskRepo, file := setupTaskUnitTest(t)
-		_, err := taskRepo.DeleteTask(file.Name(), 2)
-		th.AssertNoError(t, err)
+	t.Run("deletes the specified task from the task list successfully",
+		func(t *testing.T) {
+			mockFs, taskRepo, file := setupTaskUnitTest(t)
+			_, err := taskRepo.DeleteTask(file.Name(), 2)
+			th.AssertNoError(t, err)
 
-		wantTasks := make(tk.Tasks)
-		for id, task := range mockFs.Tasks {
-			if id != 2 { // Skip the deleted task
-				wantTasks[id] = task
+			wantTasks := make(tk.Tasks)
+			for id, task := range mockFs.Tasks {
+				if id != 2 { // Skip the deleted task
+					wantTasks[id] = task
+				}
 			}
-		}
 
-		gotTasks, err := taskRepo.Store.LoadData(file.Name())
-		th.AssertNoError(t, err)
-		th.AssertDeepEqual(t, gotTasks, wantTasks)
-	})
+			gotTasks, err := taskRepo.Store.LoadData(file.Name())
+			th.AssertNoError(t, err)
+			th.AssertDeepEqual(t, gotTasks, wantTasks)
+		})
 
-	t.Run("returns the deleted task", func(t *testing.T) {
+	t.Run("returns the deleted task successfully", func(t *testing.T) {
 		mockFs, taskRepo, file := setupTaskUnitTest(t)
 		got, err := taskRepo.DeleteTask(file.Name(), 2)
 		th.AssertNoError(t, err)
 		th.AssertDeepEqual(t, got, mockFs.Tasks[2])
 	})
 
-	t.Run("calls store.LoadData and store.SaveData once", func(t *testing.T) {
-		mockFs, taskRepo, file := setupTaskUnitTest(t)
-		_, err := taskRepo.DeleteTask(file.Name(), 2)
-		th.AssertNoError(t, err)
+	t.Run("calls store.LoadData and store.SaveData once successfully",
+		func(t *testing.T) {
+			mockFs, taskRepo, file := setupTaskUnitTest(t)
+			_, err := taskRepo.DeleteTask(file.Name(), 2)
+			th.AssertNoError(t, err)
 
-		wantCalls := Calls{LoadData, SaveData}
-		th.AssertDeepEqual(t, mockFs.Calls, wantCalls)
-	})
+			wantCalls := Calls{LoadData, SaveData}
+			th.AssertDeepEqual(t, mockFs.Calls, wantCalls)
+		})
 
-	t.Run("deletes multiple tasks and preserves task list order",
+	t.Run("deletes multiple tasks and preserves task list order successfully",
 		func(t *testing.T) {
 			mockFs, taskRepo, file := setupTaskUnitTest(t)
 
@@ -536,7 +550,7 @@ func Test_JSONFileTaskRepository_DeleteTask_Happy(t *testing.T) {
 }
 
 func Test_JSONFileTaskRepository_DeleteTask_Sad_Edge(t *testing.T) {
-	t.Run("returns an error", func(t *testing.T) {
+	t.Run("returns an error successfully", func(t *testing.T) {
 		mockFs, taskRepo, file := setupTaskUnitTest(t)
 		testCases := []struct {
 			name      string
@@ -604,21 +618,21 @@ type MockJSONFileStore[T tk.Tasks] struct {
 	SaveError error
 }
 
-func (mfs *MockJSONFileStore[Tasks]) InitFile() (*os.File, error) {
+func (mfs *MockJSONFileStore[T]) InitFile() (*os.File, error) {
 	mfs.Calls = append(mfs.Calls, InitFile)
 	return nil, nil
 }
 
-func (mfs *MockJSONFileStore[Tasks]) LoadData(filepath string) (Tasks, error) {
+func (mfs *MockJSONFileStore[T]) LoadData(filepath string) (tk.Tasks, error) {
 	mfs.Calls = append(mfs.Calls, LoadData)
 	if mfs.LoadError != nil {
-		return Tasks{}, mfs.LoadError
+		return tk.Tasks{}, mfs.LoadError
 	}
-	return Tasks(mfs.Tasks), nil
+	return tk.Tasks(mfs.Tasks), nil
 }
 
-func (mfs *MockJSONFileStore[Tasks]) SaveData(
-	tasks Tasks,
+func (mfs *MockJSONFileStore[T]) SaveData(
+	tasks tk.Tasks,
 	filepath string,
 ) error {
 	mfs.Calls = append(mfs.Calls, SaveData)
@@ -628,7 +642,7 @@ func (mfs *MockJSONFileStore[Tasks]) SaveData(
 	return nil
 }
 
-func (mfs *MockJSONFileStore[Tasks]) cleanCalls() {
+func (mfs *MockJSONFileStore[T]) cleanCalls() {
 	mfs.Calls = []Call{}
 }
 
@@ -639,7 +653,7 @@ func setupTaskUnitTest(t testing.TB) (
 ) {
 	t.Helper()
 	mockFileStore := &MockJSONFileStore[tk.Tasks]{Tasks: th.NewTestTasks()}
-	TaskRepository := &tk.JSONFileTaskRepository{
+	taskRepository := &tk.JSONFileTaskRepository{
 		Store:        mockFileStore,
 		TimeProvider: &th.StubTimeProvider{FixedTime: th.FixedTime},
 		IDGenerator:  &tk.TaskIDGenerator{},
@@ -652,5 +666,9 @@ func setupTaskUnitTest(t testing.TB) (
 		mockFileStore.cleanCalls()
 	})
 
-	return mockFileStore, TaskRepository, file
+	return mockFileStore, taskRepository, file
+}
+
+func getTaskDesc(id uint) string {
+	return fmt.Sprintf("test_task_%d", id)
 }

@@ -16,14 +16,13 @@ import (
 // TODO: tester le store
 
 // Edge
-// concurrent access
 // abrupt shutdowns
-// file access errors
 // recovery procedures
 
 func Test_Integration_Happy(t *testing.T) {
 	t.Parallel()
-	t.Run("creates multiple tasks", func(t *testing.T) {
+
+	t.Run("creates multiple tasks successfully", func(t *testing.T) {
 		taskRepo, filepath := setupTaskRepository(t)
 
 		var wantTasks = tk.Tasks{}
@@ -43,7 +42,7 @@ func Test_Integration_Happy(t *testing.T) {
 		th.AssertDeepEqual(t, gotTasks, wantTasks)
 	})
 
-	t.Run("update multiple tasks", func(t *testing.T) {
+	t.Run("updates multiple tasks successfully", func(t *testing.T) {
 		taskRepo, filepath := setupTaskRepository(t)
 
 		var wantTasks = tk.Tasks{}
@@ -53,7 +52,7 @@ func Test_Integration_Happy(t *testing.T) {
 			id := uint(i)
 			desc := getTaskDesc(id)
 			updateDesc := fmt.Sprintf("update_%s", desc)
-			var updateStatus tk.Status = tk.Done // status update default to "done"
+			var updateStatus tk.Status = tk.Done // status update defaults to "done"
 			if i%2 == 0 {
 				updateStatus = tk.InProgress // even tasks are updated to "in-progress"
 			}
@@ -75,7 +74,7 @@ func Test_Integration_Happy(t *testing.T) {
 		th.AssertDeepEqual(t, gotTasks, wantTasks)
 	})
 
-	t.Run("delete multiple tasks", func(t *testing.T) {
+	t.Run("deletes multiple tasks successfully", func(t *testing.T) {
 		taskRepo, filepath := setupTaskRepository(t)
 
 		var wantTasks = tk.Tasks{}
@@ -97,7 +96,7 @@ func Test_Integration_Happy(t *testing.T) {
 		th.AssertDeepEqual(t, gotTasks, wantTasks)
 	})
 
-	t.Run("reads all tasks", func(t *testing.T) {
+	t.Run("reads all tasks successfully", func(t *testing.T) {
 		taskRepo, filepath := setupTaskRepository(t)
 
 		var wantTasks = tk.Tasks{}
@@ -116,7 +115,7 @@ func Test_Integration_Happy(t *testing.T) {
 		th.AssertDeepEqual(t, gotTasks, wantTasks)
 	})
 
-	t.Run("read many tasks by status", func(t *testing.T) {
+	t.Run("reads multiple tasks by status successfully", func(t *testing.T) {
 		taskRepo, filepath := setupTaskRepository(t)
 
 		gotTasksByStatus := map[tk.Status]tk.Tasks{}
@@ -171,7 +170,8 @@ func Test_Integration_Sad(t *testing.T) {
 		wantErr     error
 	}{
 		{
-			name: "returns os.PathError when directory creation fails due to long path",
+			name: "returns an os.PathError when directory creation fails " +
+				"due to a long path",
 			storeParams: storeParams{
 				DestDir:  strings.Repeat("a", 1000),
 				Filename: "test_tasks.json",
@@ -180,7 +180,8 @@ func Test_Integration_Sad(t *testing.T) {
 			wantErr: &os.PathError{},
 		},
 		{
-			name: "returns os.PathError when file creation fails due to long filename",
+			name: "returns an os.PathError when file creation fails " +
+				"due to a long filename",
 			storeParams: storeParams{
 				DestDir:  t.TempDir(),
 				Filename: strings.Repeat("a", 1000) + ".json",
@@ -189,7 +190,8 @@ func Test_Integration_Sad(t *testing.T) {
 			wantErr: &os.PathError{},
 		},
 		{
-			name: "returns FilenameExtError when filename lacks .json extension",
+			name: "returns a FilenameExtError when filename lacks " +
+				"the .json extension",
 			storeParams: storeParams{
 				DestDir:  t.TempDir(),
 				Filename: "bad_filename.incorrect",
@@ -198,7 +200,7 @@ func Test_Integration_Sad(t *testing.T) {
 			wantErr: &st.FilenameExtError{},
 		},
 		{
-			name: "returns InitDataError when initial data is malformed",
+			name: "returns an InitDataError when initial data is malformed",
 			storeParams: storeParams{
 				DestDir:  t.TempDir(),
 				Filename: "test_tasks.json",
@@ -217,73 +219,114 @@ func Test_Integration_Sad(t *testing.T) {
 		})
 	}
 
-	t.Run("store.LoadData", func(t *testing.T) {
+	t.Run("fails to load data from the store", func(t *testing.T) {
+		taskRepo, filepath := setupTaskRepository(t)
+		_, err := taskRepo.CreateTask(filepath, "test_task")
+		th.AssertNoError(t, err)
 
+		_, err = taskRepo.Store.LoadData("bad_file.json")
+		th.AssertError(t, err, &os.PathError{})
 	})
 
-	t.Run("returns a DescriptionError when adding a task with empty description",
-		func(t *testing.T) {
-			taskRepo, filepath := setupTaskRepository(t)
+	t.Run("fails to save data to the store", func(t *testing.T) {
+		taskRepo, filepath := setupTaskRepository(t)
+		_, err := taskRepo.CreateTask(filepath, "test_task")
+		th.AssertNoError(t, err)
 
-			_, err := taskRepo.CreateTask(filepath, "")
-			th.AssertError(t, err, &tk.DescriptionError{})
-		})
+		tasks, err := taskRepo.ReadAllTasks(filepath)
+		th.AssertNoError(t, err)
 
-	t.Run("returns a DescriptionError when adding a task with too long description",
-		func(t *testing.T) {
-			taskRepo, filepath := setupTaskRepository(t)
+		err = taskRepo.Store.SaveData(tasks, "bad_file.json")
+		th.AssertError(t, err, &os.PathError{})
+	})
 
-			longDesc := strings.Repeat("a", 301)
-			_, err := taskRepo.CreateTask(filepath, longDesc)
-			th.AssertError(t, err, &tk.DescriptionError{})
-		})
+	t.Run("validates task descriptions", func(t *testing.T) {
+		testCases := []struct {
+			name        string
+			description string
+			wantErr     error
+		}{
+			{
+				name: "returns a DescriptionError when adding a task with " +
+					"an empty description",
+				description: "",
+				wantErr:     &tk.DescriptionError{},
+			},
+			{
+				name: "returns a DescriptionError when adding a task with " +
+					"a too long description",
+				description: strings.Repeat("a", 301),
+				wantErr:     &tk.DescriptionError{},
+			},
+		}
 
-	t.Run("returns a DescriptionError when updating a task with empty description",
-		func(t *testing.T) {
-			taskRepo, filepath := setupTaskRepository(t)
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				taskRepo, filepath := setupTaskRepository(t)
 
-			_, err := taskRepo.CreateTask(filepath, "test_task")
-			th.AssertNoError(t, err)
-
-			emptyDesc := ""
-			_, err = taskRepo.UpdateTask(filepath, tk.UpdateTaskParams{
-				ID:          1,
-				Description: &emptyDesc,
+				_, err := taskRepo.CreateTask(filepath, tc.description)
+				th.AssertError(t, err, tc.wantErr)
 			})
-			th.AssertError(t, err, &tk.DescriptionError{})
-		})
+		}
+	})
 
-	t.Run("returns a DescriptionError when updating a task with too long description",
-		func(t *testing.T) {
-			taskRepo, filepath := setupTaskRepository(t)
+	t.Run("handles update task error conditions", func(t *testing.T) {
+		taskRepo, filepath := setupTaskRepository(t)
+		updateDescription := "update_test_task"
 
-			_, err := taskRepo.CreateTask(filepath, "test_task")
-			th.AssertNoError(t, err)
+		emptyString := new(string)
+		longDescription := strings.Repeat("a", 301)
 
-			longDesc := strings.Repeat("b", 301)
-			_, err = taskRepo.UpdateTask(filepath, tk.UpdateTaskParams{
-				ID:          1,
-				Description: &longDesc,
+		_, err := taskRepo.CreateTask(filepath, "test_task")
+		th.AssertNoError(t, err)
+
+		tests := []struct {
+			name        string
+			id          uint
+			description *string
+			wantErr     interface{}
+		}{
+			{
+				name: "returns a DescriptionError when updating a task with " +
+					"an empty description",
+				id:          1,
+				description: emptyString,
+				wantErr:     &tk.DescriptionError{},
+			},
+			{
+				name: "returns a DescriptionError when updating a task with " +
+					"a too long description",
+				id:          1,
+				description: &longDescription,
+				wantErr:     &tk.DescriptionError{},
+			},
+			{
+				name: "returns a TaskNotFoundError when updating a task with " +
+					"a non-existing ID",
+				id:          0,
+				description: &updateDescription,
+				wantErr:     &tk.TaskNotFoundError{},
+			},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				updateParams := tk.UpdateTaskParams{
+					ID:          tc.id,
+					Description: tc.description,
+				}
+
+				var expectedError error
+				if tc.wantErr != nil {
+					expectedError = tc.wantErr.(error)
+				}
+				_, err := taskRepo.UpdateTask(filepath, updateParams)
+				th.AssertError(t, err, expectedError)
 			})
-			th.AssertError(t, err, &tk.DescriptionError{})
-		})
+		}
+	})
 
-	t.Run("returns a TaskNotFoundError when updating a task with non existing ID",
-		func(t *testing.T) {
-			taskRepo, filepath := setupTaskRepository(t)
-
-			_, err := taskRepo.CreateTask(filepath, "test_task")
-			th.AssertNoError(t, err)
-
-			updateDesc := "update_test_task"
-			_, err = taskRepo.UpdateTask(filepath, tk.UpdateTaskParams{
-				ID:          0,
-				Description: &updateDesc,
-			})
-			th.AssertError(t, err, &tk.TaskNotFoundError{})
-		})
-
-	t.Run("returns a TaskNotFoundError when deleting a task with non existing id",
+	t.Run("returns a TaskNotFoundError when deleting a task with a non-existing ID",
 		func(t *testing.T) {
 			taskRepo, filepath := setupTaskRepository(t)
 
