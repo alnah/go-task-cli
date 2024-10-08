@@ -10,19 +10,19 @@ import (
 	"strings"
 	"testing"
 
-	sh "github.com/alnah/task-tracker/internal/shared"
+	th "github.com/alnah/task-tracker/test_helpers"
 )
 
-func Test_InitDataError(t *testing.T) {
+func Test_InitDataError_Error(t *testing.T) {
 	err := &InitDataError{InitData: "{}"}
 	errMsg := err.Error()
-	sh.AssertErrorMessage(t, err, errMsg, string(err.InitData))
+	th.AssertErrorMessage(t, err, errMsg, string(err.InitData))
 }
 
-func Test_FilenameExtError(t *testing.T) {
+func Test_FilenameExtError_Error(t *testing.T) {
 	err := &FilenameExtErr{Filename: "test.json"}
 	errMsg := err.Error()
-	sh.AssertErrorMessage(t, err, errMsg, string(err.Filename))
+	th.AssertErrorMessage(t, err, errMsg, string(err.Filename))
 }
 
 func Test_JSONFileStore_InitFile_Happy(t *testing.T) {
@@ -46,14 +46,14 @@ func Test_JSONFileStore_InitFile_Happy(t *testing.T) {
 			t.Cleanup(func() { os.Remove(filepath) })
 
 			_, err := fs.InitFile()
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
 			if _, err := os.Stat(filepath); os.IsNotExist(err) {
 				t.Errorf("got nothing, but want a file")
 			}
 
 			content, err := os.ReadFile(filepath)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
 			var got any
 			switch tc.initData {
@@ -66,13 +66,13 @@ func Test_JSONFileStore_InitFile_Happy(t *testing.T) {
 				err = json.Unmarshal(content, &gotObject)
 				got = gotObject
 			}
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
 			var want any
 			err = json.Unmarshal([]byte(tc.initData), &want)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
-			sh.AssertDeepEqual(t, got, want)
+			th.AssertDeepEqual(t, got, want)
 		})
 	}
 }
@@ -180,34 +180,34 @@ func Test_JSONFileStore_SaveData_Happy(t *testing.T) {
 
 			flags := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
 			writeFile, err := os.OpenFile(filepath, flags, 0644)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 			t.Cleanup(func() {
 				err := writeFile.Close()
-				sh.AssertNoError(t, err)
+				th.AssertNoError(t, err)
 			})
 
 			var want any
 			err = json.Unmarshal([]byte(tc.jsonData), &want)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
 			err = fs.SaveData(want, filepath)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
 			readFile, err := os.OpenFile(filepath, os.O_RDONLY, 0444)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 			t.Cleanup(func() {
 				err := readFile.Close()
-				sh.AssertNoError(t, err)
+				th.AssertNoError(t, err)
 			})
 
 			bytes, err := io.ReadAll(readFile)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
 			var got any
 			err = json.Unmarshal(bytes, &got)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
-			sh.AssertDeepEqual(t, got, want)
+			th.AssertDeepEqual(t, got, want)
 		})
 	}
 }
@@ -267,16 +267,16 @@ func Test_JSONFileStore_LoadData_Happy(t *testing.T) {
 			fs, filepath := setupJSONFileStore(t, filename)
 
 			err := os.WriteFile(filepath, []byte(tc.jsonData), 0644)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
 			got, err := fs.LoadData(filepath)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
 			var want any
 			err = json.Unmarshal([]byte(tc.jsonData), &want)
-			sh.AssertNoError(t, err)
+			th.AssertNoError(t, err)
 
-			sh.AssertDeepEqual(t, got, want)
+			th.AssertDeepEqual(t, got, want)
 		})
 	}
 }
@@ -286,18 +286,18 @@ func Test_JSONFileStore_LoadData_Sad(t *testing.T) {
 		fs, filepath := setupJSONFileStore(t, "test_not_exist.json")
 		got, err := fs.LoadData(filepath)
 		assertError(t, err, &os.PathError{})
-		sh.AssertNil(t, got)
+		th.AssertNil(t, got)
 	})
 
 	t.Run("returns an json.SyntaxError if EOF", func(t *testing.T) {
 		fs, filepath := setupJSONFileStore(t, "test_eof.json")
 
 		err := os.WriteFile(filepath, []byte("{\"key\": \"value\""), 0644)
-		sh.AssertNoError(t, err)
+		th.AssertNoError(t, err)
 
 		got, err := fs.LoadData(filepath)
 		assertError(t, err, &json.SyntaxError{})
-		sh.AssertNil(t, got)
+		th.AssertNil(t, got)
 	})
 }
 
@@ -307,7 +307,7 @@ func Test_JSONFileStore_LoadData_Edge(t *testing.T) {
 			fs, emptyFilepath := setupJSONFileStore(t, "")
 			got, err := fs.LoadData(emptyFilepath)
 			assertError(t, err, &os.PathError{})
-			sh.AssertNil(t, got)
+			th.AssertNil(t, got)
 		})
 }
 
@@ -438,7 +438,7 @@ func setupJSONFileStore(t *testing.T, f string) (*JSONFileStore[any], string) {
 
 func assertError(t testing.TB, err error, expectedType error) {
 	t.Helper()
-	sh.AssertNotNil(t, err)
+	th.AssertNotNil(t, err)
 
 	switch expectedType.(type) {
 	// Custom Errors

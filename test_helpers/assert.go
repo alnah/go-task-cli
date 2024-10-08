@@ -1,4 +1,4 @@
-package shared
+package test_helpers
 
 import (
 	"reflect"
@@ -23,7 +23,7 @@ func AssertNotNil(t testing.TB, got any) {
 func AssertNoError(t testing.TB, err error) {
 	t.Helper()
 	if err != nil {
-		t.Fatalf("got an error, didn't want one:\n%v", err)
+		t.Fatalf("got an error, didn't want one: %v", err)
 	}
 }
 

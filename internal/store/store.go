@@ -89,7 +89,7 @@ func (fs *JSONFileStore[T]) LoadData(filepath string) (T, error) {
 		return zero, err
 	}
 
-	return data.(T), nil
+	return data, nil
 }
 
 func (fs *JSONFileStore[T]) SaveData(data T, filepath string) error {
@@ -130,7 +130,7 @@ func (fs *JSONFileStore[T]) validateFilenameExt() error {
 
 func (fs *JSONFileStore[T]) createDestDir() error {
 	if err := os.MkdirAll(fs.DestDir, 0644); err != nil {
-		return fmt.Errorf("failed to create destination directory: %w", err)
+		return fmt.Errorf("failed to create destination directory:\n>%w", err)
 	}
 
 	return nil
@@ -141,7 +141,7 @@ func (fs *JSONFileStore[T]) createFile() (*os.File, error) {
 
 	file, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create file: %w", err)
+		return nil, fmt.Errorf("failed to create file:\n>%w", err)
 	}
 
 	file.WriteString(string(fs.InitData))
@@ -152,7 +152,7 @@ func (fs *JSONFileStore[T]) createFile() (*os.File, error) {
 func (fs *JSONFileStore[T]) openFile(filepath string, mode int) (*os.File, error) {
 	file, err := os.OpenFile(filepath, mode, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
+		return nil, fmt.Errorf("failed to open file:\n>%w", err)
 	}
 
 	return file, nil
@@ -160,27 +160,27 @@ func (fs *JSONFileStore[T]) openFile(filepath string, mode int) (*os.File, error
 
 func (fs *JSONFileStore[T]) closeFile(file *os.File) error {
 	if err := file.Close(); err != nil {
-		return fmt.Errorf("failed to close file: %w", err)
+		return fmt.Errorf("failed to close file:\n>%w", err)
 	}
 
 	return nil
 }
 
-func (fs *JSONFileStore[T]) marshall(data any) ([]byte, error) {
+func (fs *JSONFileStore[T]) marshall(data T) ([]byte, error) {
 	bytes, err := json.Marshal(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal data: %w", err)
+		return nil, fmt.Errorf("failed to marshal data:\n>%w", err)
 	}
 
 	return bytes, nil
 }
 
-func (fs *JSONFileStore[T]) unmarshall(bytes []byte) (any, error) {
-	var data any
+func (fs *JSONFileStore[T]) unmarshall(bytes []byte) (T, error) {
+	var data T
 
 	if err := json.Unmarshal(bytes, &data); err != nil {
-		var zero any
-		return zero, fmt.Errorf("failed to unmarshal data: %w", err)
+		var zero T
+		return zero, fmt.Errorf("failed to unmarshal data:\n>%w", err)
 	}
 
 	return data, nil
@@ -189,7 +189,7 @@ func (fs *JSONFileStore[T]) unmarshall(bytes []byte) (any, error) {
 func (fs *JSONFileStore[T]) readFileContent(file *os.File) ([]byte, error) {
 	bytes, err := io.ReadAll(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file content: %w", err)
+		return nil, fmt.Errorf("failed to read file content:\n>%w", err)
 	}
 
 	return bytes, nil
@@ -197,7 +197,7 @@ func (fs *JSONFileStore[T]) readFileContent(file *os.File) ([]byte, error) {
 
 func (fs *JSONFileStore[T]) writeFileContent(file *os.File, bytes []byte) error {
 	if _, err := file.Write(bytes); err != nil {
-		return fmt.Errorf("failed to write file content: %w", err)
+		return fmt.Errorf("failed to write file content:\n>%w", err)
 	}
 
 	return nil
