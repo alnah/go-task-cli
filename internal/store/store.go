@@ -38,11 +38,11 @@ func (e *InitDataError) Error() string {
 	)
 }
 
-type FilenameExtErr struct {
+type FilenameExtError struct {
 	Filename string
 }
 
-func (e *FilenameExtErr) Error() string {
+func (e *FilenameExtError) Error() string {
 	return fmt.Sprintf("expected a `.json` file, but got `%s`", e.Filename)
 }
 
@@ -63,7 +63,6 @@ func (fs *JSONFileStore[T]) InitFile() (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	defer fs.closeFile(file)
 
 	return file, nil
@@ -76,7 +75,6 @@ func (fs *JSONFileStore[T]) LoadData(filepath string) (T, error) {
 	if err != nil {
 		return zero, err
 	}
-
 	defer fs.closeFile(file)
 
 	bytes, err := fs.readFileContent(file)
@@ -97,7 +95,6 @@ func (fs *JSONFileStore[T]) SaveData(data T, filepath string) error {
 	if err != nil {
 		return err
 	}
-
 	defer fs.closeFile(file)
 
 	bytes, err := fs.marshall(data)
@@ -122,7 +119,7 @@ func (fs *JSONFileStore[T]) validateDataStructure() error {
 
 func (fs *JSONFileStore[T]) validateFilenameExt() error {
 	if filepath.Ext(fs.Filename) != ".json" {
-		return &FilenameExtErr{Filename: fs.Filename}
+		return &FilenameExtError{Filename: fs.Filename}
 	}
 
 	return nil
@@ -149,7 +146,10 @@ func (fs *JSONFileStore[T]) createFile() (*os.File, error) {
 	return file, nil
 }
 
-func (fs *JSONFileStore[T]) openFile(filepath string, mode int) (*os.File, error) {
+func (fs *JSONFileStore[T]) openFile(
+	filepath string,
+	mode int,
+) (*os.File, error) {
 	file, err := os.OpenFile(filepath, mode, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file:\n>%w", err)
